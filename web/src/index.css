@@ -1,0 +1,110 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Light Mode ─────────────────────────────────────────── */
+    /* Background is a subtle cool-gray so white cards pop above it */
+    --background: 210 20% 95%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 92%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 92%;
+    --muted-foreground: 215 20% 45%;
+
+    --accent: 210 40% 92%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214 31% 86%;
+    --input: 214 31% 86%;
+    --ring: 221.2 83.2% 53.3%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar gets a slightly darker surface in light mode */
+    --sidebar: 210 20% 97%;
+    --sidebar-border: 214 31% 88%;
+  }
+
+  .dark {
+    /* ── Dark Mode ──────────────────────────────────────────── */
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 6.5%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 20%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    --sidebar: 222.2 84% 4%;
+    --sidebar-border: 217.2 32.6% 15%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html, body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Ensure all heading elements use the themed foreground colour so they are
+     always readable regardless of CSS-variable cascade order. */
+  h1, h2, h3, h4, h5, h6 {
+    color: hsl(var(--foreground));
+  }
+
+  /* Plain <p> and <span> that carry no Tailwind colour class inherit the body
+     foreground — explicitly restated here to guard against any reset. */
+  p, span, li, td, th, label {
+    color: inherit;
+  }
+
+  /* ── Input elements: enforce contrast in both themes ──────── */
+  input, textarea, select {
+    @apply bg-background text-foreground border border-input placeholder:text-muted-foreground;
+  }
+
+  /* Smooth cross-theme transitions */
+  * {
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+  }
+}
