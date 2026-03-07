@@ -107,10 +107,30 @@ Both Telegram and Discord support the full command set.
 
 ### Requirements
 
-- Linux VPS (Ubuntu 22.04 / Debian 12 recommended)
+- Linux VPS (Rocky Linux 9 recommended)
 - [KumoMTA](https://docs.kumomta.com) installed and running
 - Go 1.22+ *(build only)*
 - Node.js 20+ *(build only)*
+
+### Quick Install (Rocky Linux 9)
+
+```bash
+# 1. Update your system
+sudo dnf update -y
+
+# 2. Install Git
+sudo dnf install -y git
+
+# 3. Clone the repository
+sudo mkdir -p /opt/kumoops
+sudo git clone https://github.com/pulak-ranjan/kumoops.git /opt/kumoops
+cd /opt/kumoops
+
+# 4. Run the installer
+sudo bash scripts/install-kumoops-rocky9.sh
+```
+
+> The installer sets up KumoMTA, builds the backend and frontend, configures systemd, firewall, Nginx, and optionally provisions a Let's Encrypt SSL certificate.
 
 ### Build from source
 

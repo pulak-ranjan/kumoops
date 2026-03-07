@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	TOTPDigits   = 6
-	TOTPPeriod   = 30 // seconds
-	TOTPIssuer   = "KumoMTA-UI"
+	TOTPDigits = 6
+	TOTPPeriod = 30 // seconds
+	TOTPIssuer = "KumoOps"
 )
 
 // GenerateTOTPSecret creates a new random secret for 2FA
@@ -36,7 +36,7 @@ func GenerateTOTPURI(secret, email string) string {
 func ValidateTOTP(secret, code string) bool {
 	// Allow for time drift - check current, previous, and next period
 	now := time.Now().Unix()
-	
+
 	for _, offset := range []int64{-1, 0, 1} {
 		timestamp := now + (offset * TOTPPeriod)
 		expected := generateTOTPCode(secret, timestamp/TOTPPeriod)
@@ -44,7 +44,7 @@ func ValidateTOTP(secret, code string) bool {
 			return true
 		}
 	}
-	
+
 	return false
 }
 

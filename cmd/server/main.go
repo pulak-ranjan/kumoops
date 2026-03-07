@@ -19,7 +19,7 @@ func main() {
 
 	dbDir := os.Getenv("DB_DIR")
 	if dbDir == "" {
-		dbDir = "/var/lib/kumomta-ui"
+		dbDir = "/var/lib/kumoops"
 	}
 	dbPath := dbDir + "/panel.db"
 

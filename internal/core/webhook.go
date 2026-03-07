@@ -114,9 +114,9 @@ func (ws *WebhookService) SendAuditLog(action, details, user string) error {
 			Username:  senderName,
 			IconEmoji: ":hammer_and_wrench:",
 			Attachments: []Attachment{{
-				Color: "#9b59b6",
-				Title: "🛠️ Audit Log",
-				Text:  fmt.Sprintf("*%s* performed action: %s\n> %s", user, action, details),
+				Color:  "#9b59b6",
+				Title:  "🛠️ Audit Log",
+				Text:   fmt.Sprintf("*%s* performed action: %s\n> %s", user, action, details),
 				Footer: "System Audit",
 				Ts:     time.Now().Unix(),
 			}},
@@ -168,9 +168,9 @@ func (ws *WebhookService) CheckBlacklists(forceReport bool) error {
 
 	// If forced report (manual click) and clean (Priority: Green)
 	if forceReport {
-		return ws.sendAlert("✅ Blacklist Report", 
-			fmt.Sprintf("Scanned %d IPs against %d RBLs.", checkedCount, len(rbls)), 
-			[]string{"All systems clean. No blacklistings detected."}, 
+		return ws.sendAlert("✅ Blacklist Report",
+			fmt.Sprintf("Scanned %d IPs against %d RBLs.", checkedCount, len(rbls)),
+			[]string{"All systems clean. No blacklistings detected."},
 			3066993)
 	}
 
@@ -183,7 +183,7 @@ func (ws *WebhookService) RunSecurityAudit() error {
 
 	dbPath := os.Getenv("DB_DIR")
 	if dbPath == "" {
-		dbPath = "/var/lib/kumomta-ui"
+		dbPath = "/var/lib/kumoops"
 	}
 	info, err := os.Stat(dbPath + "/panel.db")
 	if err == nil {
@@ -217,7 +217,7 @@ func (ws *WebhookService) SendDailySummary(stats map[string][]DayStats) error {
 	if err != nil || settings == nil || !settings.WebhookEnabled || settings.WebhookURL == "" {
 		return nil
 	}
-	
+
 	totalSent := int64(0)
 	totalDelivered := int64(0)
 	totalBounced := int64(0)
@@ -243,7 +243,7 @@ func (ws *WebhookService) SendDailySummary(stats map[string][]DayStats) error {
 func (ws *WebhookService) SendTestWebhook(webhookURL string) error {
 	senderName := ws.getSenderName()
 	isDiscord := strings.Contains(webhookURL, "discord.com")
-	
+
 	var payload []byte
 	if isDiscord {
 		msg := DiscordMessage{
@@ -260,7 +260,7 @@ func (ws *WebhookService) SendTestWebhook(webhookURL string) error {
 	} else {
 		msg := SlackMessage{
 			Username: senderName,
-			Text: "✅ Test Successful! Webhook is working.",
+			Text:     "✅ Test Successful! Webhook is working.",
 		}
 		payload, _ = json.Marshal(msg)
 	}
@@ -274,18 +274,22 @@ func (ws *WebhookService) CheckBounceRates() error {
 	if err != nil {
 		return err
 	}
-	
+
 	settings, err := ws.Store.GetSettings()
 	if err != nil || settings == nil || !settings.WebhookEnabled {
 		return nil
 	}
 
 	var alerts []string
-	
+
 	for domain, days := range stats {
-		if len(days) == 0 { continue }
+		if len(days) == 0 {
+			continue
+		}
 		today := days[len(days)-1]
-		if today.Sent < 10 { continue } // Ignore low volume
+		if today.Sent < 10 {
+			continue
+		} // Ignore low volume
 
 		rate := float64(today.Bounced) / float64(today.Sent) * 100
 		if rate >= settings.BounceAlertPct {
@@ -309,7 +313,7 @@ func (ws *WebhookService) sendAlert(title, desc string, items []string, color in
 
 	isDiscord := strings.Contains(settings.WebhookURL, "discord.com")
 	senderName := ws.getSenderName()
-	
+
 	itemList := strings.Join(items, "\n• ")
 	if len(items) > 0 {
 		itemList = "• " + itemList
@@ -336,9 +340,9 @@ func (ws *WebhookService) sendAlert(title, desc string, items []string, color in
 			Username:  senderName,
 			IconEmoji: ":warning:",
 			Attachments: []Attachment{{
-				Color: fmt.Sprintf("#%06x", color),
-				Title: title,
-				Text:  fmt.Sprintf("%s\n\n%s", desc, itemList),
+				Color:  fmt.Sprintf("#%06x", color),
+				Title:  title,
+				Text:   fmt.Sprintf("%s\n\n%s", desc, itemList),
 				Footer: "KumoMTA Alert",
 				Ts:     time.Now().Unix(),
 			}},
@@ -351,7 +355,9 @@ func (ws *WebhookService) sendAlert(title, desc string, items []string, color in
 
 func (ws *WebhookService) send(url string, payload []byte, eventType string) error {
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{Timeout: 10 * time.Second}

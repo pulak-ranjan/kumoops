@@ -21,7 +21,7 @@ import (
 
 const (
 	// Directory to store backups
-	BackupDir = "/var/lib/kumomta-ui/backups"
+	BackupDir = "/var/lib/kumoops/backups"
 )
 
 // BlockIP adds an IP to the firewall drop zone immediately and permanently.

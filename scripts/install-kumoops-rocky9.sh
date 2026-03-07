@@ -1,20 +1,20 @@
 #!/bin/bash
 set -euo pipefail
 
-echo "=== KumoMTA + KumoMTA-UI Installer (Rocky Linux 9) ==="
+echo "=== KumoMTA + KumoOps Installer (Rocky Linux 9) ==="
 
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root (sudo -i)."
   exit 1
 fi
 
-PANEL_DIR="/opt/kumomta-ui"
-BIN_NAME="kumomta-ui-server"
+PANEL_DIR="/opt/kumoops"
+BIN_NAME="kumoops"
 BIN_PATH="$PANEL_DIR/$BIN_NAME"
-MIGRATE_BIN="$PANEL_DIR/kumomta-ui-migrate"
-DB_DIR="/var/lib/kumomta-ui"
-SERVICE_FILE="/etc/systemd/system/kumomta-ui.service"
-NGINX_CONF="/etc/nginx/conf.d/kumomta-ui.conf"
+MIGRATE_BIN="$PANEL_DIR/kumoops-migrate"
+DB_DIR="/var/lib/kumoops"
+SERVICE_FILE="/etc/systemd/system/kumoops.service"
+NGINX_CONF="/etc/nginx/conf.d/kumoops.conf"
 
 echo
 
@@ -77,8 +77,8 @@ echo "[*] Verifying panel directory at $PANEL_DIR ..."
 if [ ! -d "$PANEL_DIR" ]; then
   echo "Directory $PANEL_DIR not found."
   echo "Clone your Git repo there, e.g.:"
-  echo "  sudo mkdir -p /opt/kumomta-ui"
-  echo "  sudo git clone https://github.com/pulak-ranjan/kumomta-ui.git /opt/kumomta-ui"
+  echo "  sudo mkdir -p /opt/kumoops"
+  echo "  sudo git clone https://github.com/pulak-ranjan/kumoops.git /opt/kumoops"
   exit 1
 fi
 
@@ -279,8 +279,8 @@ fi
 
 systemctl daemon-reload
 systemctl enable --now kumomta || true
-systemctl enable --now kumomta-ui || true
-systemctl restart kumomta-ui
+systemctl enable --now kumoops || true
+systemctl restart kumoops
 
 # --------------------------
 # Nginx & SSL Config
@@ -339,7 +339,7 @@ fi
 
 echo
 echo "==========================================="
-echo "  KumoMTA + KumoMTA-UI Setup Complete"
+echo "  KumoMTA + KumoOps Setup Complete"
 echo "==========================================="
 echo
 echo "Status Checks:"

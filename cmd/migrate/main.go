@@ -20,7 +20,7 @@ import (
 const (
 	SourcesPath = "/opt/kumomta/etc/policy/sources.toml"
 	InitLuaPath = "/opt/kumomta/etc/policy/init.lua"
-	DBPath      = "/var/lib/kumomta-ui/panel.db"
+	DBPath      = "/var/lib/kumoops/panel.db"
 )
 
 func main() {
