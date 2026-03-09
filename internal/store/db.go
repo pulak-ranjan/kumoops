@@ -50,8 +50,18 @@ func NewStore(path string) (*Store, error) {
 		&models.MTASTSPolicy{},       // NEW
 		&models.WarmupLog{},          // NEW
 		&models.DeliveryEvent{},      // NEW
-		&models.ReputationCheck{},    // NEW
-		&models.RemoteServer{},       // NEW
+		&models.ReputationCheck{},        // NEW
+		&models.RemoteServer{},           // NEW
+		&models.FBLRecord{},              // FBL engine
+		&models.BounceClassification{},   // DSN bounce classifier
+		&models.VERPConfig{},             // VERP per-domain config
+		&models.ISPSnapshot{},            // ISP intelligence snapshots
+		&models.ThrottleAdjustmentLog{},  // Adaptive throttle audit log
+		&models.AnomalyEvent{},           // Anomaly detection events
+		&models.CampaignVariant{},        // A/B test variants
+		&models.SeedMailbox{},            // Inbox placement seed mailboxes
+		&models.PlacementTest{},          // Inbox placement test runs
+		&models.PlacementResult{},        // Per-mailbox placement results
 	); err != nil {
 		return nil, err
 	}

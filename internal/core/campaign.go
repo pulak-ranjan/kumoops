@@ -142,18 +142,30 @@ func (cs *CampaignService) processCampaign(c models.Campaign) {
 	sender := c.Sender
 	addr := "127.0.0.1:25"
 
-	// Construct message common headers
-	safeSubject := strings.ReplaceAll(c.Subject, "\r", "")
-	safeSubject = strings.ReplaceAll(safeSubject, "\n", "")
-	baseHeaders := fmt.Sprintf("From: %s\r\nSubject: %s\r\nX-Campaign: %d\r\nX-Kumo-Ref: Bulk\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n",
-		sender.Email, safeSubject, c.ID)
+	// Load A/B variants if this is an A/B test
+	var variants []models.CampaignVariant
+	if c.IsABTest {
+		cs.Store.DB.Where("campaign_id = ?", c.ID).Order("name").Find(&variants)
+	}
 
-	// Determine Base URL for tracking
+	// Count total pending recipients for A/B variant assignment
+	var totalPending int64
+	cs.Store.DB.Model(&models.CampaignRecipient{}).
+		Where("campaign_id = ? AND status = 'pending'", c.ID).Count(&totalPending)
+	recipientIndex := 0
+
+	// Determine base URL for tracking + unsubscribe
 	baseURL := "http://localhost:9000"
-	if settings, err := cs.Store.GetSettings(); err == nil && settings.MainHostname != "" {
-		protocol := "https"
-		if settings.MainHostname == "localhost" { protocol = "http" }
-		baseURL = fmt.Sprintf("%s://%s", protocol, settings.MainHostname)
+	if settings, err := cs.Store.GetSettings(); err == nil && settings != nil {
+		if settings.TrackingBaseURL != "" {
+			baseURL = settings.TrackingBaseURL
+		} else if settings.MainHostname != "" {
+			protocol := "https"
+			if settings.MainHostname == "localhost" {
+				protocol = "http"
+			}
+			baseURL = fmt.Sprintf("%s://%s", protocol, settings.MainHostname)
+		}
 	}
 
 	// Persistent Connection
@@ -191,6 +203,23 @@ func (cs *CampaignService) processCampaign(c models.Campaign) {
 		}
 
 		for _, r := range recipients {
+			// Assign A/B variant (if A/B test campaign)
+			var variant *models.CampaignVariant
+			if c.IsABTest && len(variants) > 0 {
+				variant = AssignVariant(variants, recipientIndex, int(totalPending))
+				if variant != nil && r.VariantID == nil {
+					r.VariantID = &variant.ID
+					cs.Store.DB.Model(&r).Update("variant_id", variant.ID)
+				}
+			}
+			recipientIndex++
+
+			// Generate unsubscribe token if not already set
+			if r.UnsubToken == "" {
+				r.UnsubToken = GenerateUnsubToken(c.ID, r.ID)
+				cs.Store.DB.Model(&r).Update("unsub_token", r.UnsubToken)
+			}
+
 			// Reconnection Logic
 			if err := client.Mail(sender.Email); err != nil {
 				log.Printf("SMTP Connection lost (%v). Reconnecting...", err)
@@ -233,16 +262,33 @@ func (cs *CampaignService) processCampaign(c models.Campaign) {
 				continue
 			}
 
+			// Determine subject + body (variant or default)
+			msgSubject := VariantSubject(variant, &c)
+			msgBody := VariantBody(variant, &c)
+			safeSubject := strings.ReplaceAll(msgSubject, "\r", "")
+			safeSubject = strings.ReplaceAll(safeSubject, "\n", "")
+
+			// Build List-Unsubscribe headers
+			unsubURL, unsubPost := ListUnsubscribeHeaders(baseURL, r.UnsubToken)
+
+			// Per-recipient headers (subject + unsub headers differ per recipient)
+			perHeaders := fmt.Sprintf(
+				"From: %s\r\nSubject: %s\r\nX-Campaign: %d\r\nX-Kumo-Ref: Bulk\r\n"+
+					"List-Unsubscribe: %s\r\nList-Unsubscribe-Post: %s\r\n"+
+					"Content-Type: text/html; charset=UTF-8\r\n\r\n",
+				sender.Email, safeSubject, c.ID, unsubURL, unsubPost,
+			)
+
 			// Inject Tracking Pixel & Rewrite Links
 			trackingOpenURL := fmt.Sprintf("%s/api/track/open/%d", baseURL, r.ID)
 			pixel := fmt.Sprintf(`<img src="%s" alt="" width="1" height="1" style="display:none" />`, trackingOpenURL)
 
 			// Rewrite Links for Click Tracking
-			bodyWithLinks := rewriteLinks(c.Body, baseURL, r.ID)
+			bodyWithLinks := rewriteLinks(msgBody, baseURL, r.ID)
 
 			bodyFinal := bodyWithLinks + "\n" + pixel
 
-			msg := fmt.Sprintf("To: %s\r\n%s%s", r.Email, baseHeaders, bodyFinal)
+			msg := fmt.Sprintf("To: %s\r\n%s%s", r.Email, perHeaders, bodyFinal)
 
 			if _, err = wc.Write([]byte(msg)); err != nil {
 				log.Printf("SMTP Write error: %v", err)

@@ -42,8 +42,20 @@ func main() {
 	tgBot := core.NewTelegramBot(st)
 	go tgBot.StartPolling()
 
+	// Start Inbound Mail Processor (FBL + DSN from Maildir)
+	inbound := core.NewInboundProcessor(st)
+	inbound.Start(60) // Scan every 60 seconds
+
+	// Start ISP Intelligence engine (refresh every hour)
+	ispIntel := core.NewISPIntelService(st)
+
+	// Start Adaptive Throttler + Anomaly Detector + A/B Test winner checker (5 min via scheduler)
+	adaptiveThrottle := core.NewAdaptiveThrottler(st)
+	anomalyDetector := core.NewAnomalyDetector(st, ws)
+	abTestSvc := core.NewABTestService(st)
+
 	// Start Background Scheduler
-	go startScheduler(ws, tgBot)
+	go startScheduler(ws, tgBot, ispIntel, adaptiveThrottle, anomalyDetector, abTestSvc)
 
 	// Start HTTP Server
 	addr := "127.0.0.1:9000"
@@ -53,7 +65,14 @@ func main() {
 	}
 }
 
-func startScheduler(ws *core.WebhookService, tgBot *core.TelegramBot) {
+func startScheduler(
+	ws *core.WebhookService,
+	tgBot *core.TelegramBot,
+	ispIntel *core.ISPIntelService,
+	adaptiveThrottle *core.AdaptiveThrottler,
+	anomalyDetector *core.AnomalyDetector,
+	abTestSvc *core.ABTestService,
+) {
 	log.Println("Starting background scheduler...")
 
 	// Run startup checks immediately (non-blocking)
@@ -82,6 +101,9 @@ func startScheduler(ws *core.WebhookService, tgBot *core.TelegramBot) {
 		if err := core.EnsureRecentBackup(); err != nil {
 			log.Printf("Backup startup check error: %v", err)
 		}
+
+		// 6. Initial ISP intelligence snapshot
+		go ispIntel.RefreshAll()
 	}()
 
 	dailyTicker := time.NewTicker(24 * time.Hour)
@@ -104,6 +126,15 @@ func startScheduler(ws *core.WebhookService, tgBot *core.TelegramBot) {
 				log.Printf("Scheduled campaign error: %v", err)
 			}
 
+			// 3. Adaptive Throttle cycle (adjusts per-ISP shaping rules)
+			go adaptiveThrottle.Run()
+
+			// 4. Anomaly Detection + Self-Healing cycle
+			go anomalyDetector.Run()
+
+			// 5. A/B Test winner auto-selection
+			go abTestSvc.Run()
+
 		case <-dailyTicker.C:
 			log.Println("[Scheduler] Running daily tasks...")
 
@@ -113,11 +144,11 @@ func startScheduler(ws *core.WebhookService, tgBot *core.TelegramBot) {
 				tgBot.SendDigest(stats)
 				tgBot.SendDiscordDigest(stats)
 			}
-			
-			// 3. Security Audit
+
+			// 2. Security Audit
 			ws.RunSecurityAudit()
-			
-			// 4. Auto Backup
+
+			// 3. Auto Backup
 			if err := core.BackupConfig(); err != nil {
 				log.Printf("Backup failed: %v", err)
 			} else {
@@ -132,6 +163,9 @@ func startScheduler(ws *core.WebhookService, tgBot *core.TelegramBot) {
 			// Telegram proactive push alerts
 			tgBot.CheckAndAlertBounceSpike()
 			tgBot.CheckAndAlertQueueBackpressure(5000)
+
+			// ISP Intelligence refresh (hourly)
+			go ispIntel.RefreshAll()
 		}
 	}
 }

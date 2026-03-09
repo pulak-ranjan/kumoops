@@ -1,0 +1,25 @@
+# Build outputs
+kumoops
+kumoops.exe
+web/dist/
+
+# Dependencies
+web/node_modules/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# IDE / Claude
+.claude/
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / env
+.env
+*.env

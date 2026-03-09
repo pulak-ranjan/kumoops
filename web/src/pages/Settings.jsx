@@ -16,6 +16,7 @@ export default function Settings() {
     main_hostname: "", main_server_ip: "", relay_ips: "",
     tls_cert_path: "", tls_key_path: "",
     ai_provider: "", ai_api_key: "",
+    ollama_base_url: "", ollama_model: "",
     telegram_bot_token: "", telegram_chat_id: "",
     telegram_enabled: false, telegram_digest_hour: 8,
     discord_webhook_url: "", discord_enabled: false,
@@ -204,38 +205,116 @@ export default function Settings() {
           <h3 className="text-lg font-semibold flex items-center gap-2 border-b pb-2">
             <Bot className="w-5 h-5" /> AI Integration
           </h3>
-          
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">AI Provider</label>
-              <select
-                name="ai_provider"
-                value={form.ai_provider}
-                onChange={onChange}
-                className="w-full h-10 rounded-md border bg-background px-3 text-sm focus:ring-2 focus:ring-ring"
-              >
-                <option value="">Select Provider</option>
-                <option value="openai">OpenAI (GPT-3.5)</option>
-                <option value="deepseek">DeepSeek</option>
-              </select>
-            </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium">API Key</label>
-              <div className="relative">
-                <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                <input
-                  name="ai_api_key"
-                  type="password"
-                  value={form.ai_api_key}
-                  onChange={onChange}
-                  className="w-full pl-9 h-10 rounded-md border bg-background px-3 text-sm focus:ring-2 focus:ring-ring"
-                  placeholder="sk-..."
-                />
+          {/* Provider cards */}
+          {(() => {
+            const providers = [
+              { id: 'openai',    label: 'OpenAI',      model: 'GPT-4o-mini',              badge: 'Cloud',  badgeCls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400',  note: 'Reliable. Best overall quality.' },
+              { id: 'anthropic', label: 'Anthropic',   model: 'Claude 3.5 Haiku',         badge: 'Cloud',  badgeCls: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', note: 'Excellent reasoning. Great for analysis.' },
+              { id: 'gemini',    label: 'Google',      model: 'Gemini 2.0 Flash',         badge: 'Cloud',  badgeCls: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',   note: 'Fast & cheap. Free tier available.' },
+              { id: 'groq',      label: 'Groq',        model: 'Llama 3.3 70B',            badge: 'Cloud',  badgeCls: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400', note: 'Ultra-fast inference. Generous free tier.' },
+              { id: 'mistral',   label: 'Mistral',     model: 'Mistral Small',            badge: 'Cloud',  badgeCls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-400',     note: 'Strong European model. Privacy-focused.' },
+              { id: 'together',  label: 'Together AI', model: 'Llama 3.2 11B',            badge: 'Cloud',  badgeCls: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-400', note: '100+ open-source models on demand.' },
+              { id: 'deepseek',  label: 'DeepSeek',    model: 'DeepSeek Chat',            badge: 'Cloud',  badgeCls: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400',  note: 'Affordable. Strong code & reasoning.' },
+              { id: 'ollama',    label: 'Ollama',      model: 'Your local model',         badge: '🖥 Local', badgeCls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', note: 'FREE. Runs on your VPS — zero cost, full privacy.' },
+            ];
+            return (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {providers.map(p => (
+                  <button key={p.id} type="button"
+                    onClick={() => setForm(f => ({ ...f, ai_provider: p.id }))}
+                    className={cn(
+                      'flex flex-col items-start gap-1 p-3 rounded-lg border text-left transition-all',
+                      form.ai_provider === p.id
+                        ? 'border-primary bg-primary/5 ring-2 ring-primary/30'
+                        : 'border-border hover:border-primary/50 hover:bg-muted/30'
+                    )}>
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-sm font-bold">{p.label}</span>
+                      <span className={cn('text-[10px] font-semibold px-1.5 py-0.5 rounded', p.badgeCls)}>{p.badge}</span>
+                    </div>
+                    <span className="text-[11px] text-muted-foreground font-medium">{p.model}</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">{p.note}</span>
+                  </button>
+                ))}
               </div>
-              <p className="text-[10px] text-muted-foreground">Key is write-only, never shown.</p>
+            );
+          })()}
+
+          {/* API Key — hidden for Ollama */}
+          {form.ai_provider && form.ai_provider !== 'ollama' && (
+            <div className="grid sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">API Key</label>
+                <div className="relative">
+                  <Key className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <input
+                    name="ai_api_key"
+                    type="password"
+                    value={form.ai_api_key}
+                    onChange={onChange}
+                    className="w-full pl-9 h-10 rounded-md border bg-background px-3 text-sm focus:ring-2 focus:ring-ring"
+                    placeholder={
+                      form.ai_provider === 'openai'    ? 'sk-...' :
+                      form.ai_provider === 'anthropic' ? 'sk-ant-...' :
+                      form.ai_provider === 'gemini'    ? 'AIza...' :
+                      form.ai_provider === 'groq'      ? 'gsk_...' :
+                      form.ai_provider === 'mistral'   ? 'your Mistral API key' :
+                      form.ai_provider === 'together'  ? 'your Together AI key' :
+                      'your API key'
+                    }
+                  />
+                </div>
+                <p className="text-[10px] text-muted-foreground">Key is write-only and encrypted at rest.</p>
+              </div>
+              <div className="space-y-2 self-start pt-1">
+                {form.ai_provider === 'openai'    && <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get OpenAI key</a>}
+                {form.ai_provider === 'anthropic' && <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get Anthropic key</a>}
+                {form.ai_provider === 'gemini'    && <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get Gemini key (free)</a>}
+                {form.ai_provider === 'groq'      && <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get Groq key (free tier)</a>}
+                {form.ai_provider === 'mistral'   && <a href="https://console.mistral.ai/api-keys" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get Mistral key</a>}
+                {form.ai_provider === 'together'  && <a href="https://api.together.xyz/settings/api-keys" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get Together AI key</a>}
+                {form.ai_provider === 'deepseek'  && <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">→ Get DeepSeek key</a>}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* Ollama config — shown only when Ollama is selected */}
+          {form.ai_provider === 'ollama' && (
+            <div className="border rounded-lg p-4 space-y-3 bg-emerald-50/50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-800/50">
+              <div className="flex items-start gap-2">
+                <span className="text-lg">🖥</span>
+                <div>
+                  <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">Ollama — Free local AI on your VPS</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">No API key needed. Install Ollama, pull a model, done.</p>
+                </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Ollama Base URL</label>
+                  <input name="ollama_base_url" value={form.ollama_base_url} onChange={onChange}
+                    placeholder="http://localhost:11434"
+                    className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:ring-2 focus:ring-ring" />
+                  <p className="text-[10px] text-muted-foreground">Default: http://localhost:11434</p>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Model Name</label>
+                  <input name="ollama_model" value={form.ollama_model} onChange={onChange}
+                    placeholder="llama3.2"
+                    className="w-full h-9 rounded-md border bg-background px-3 text-sm focus:ring-2 focus:ring-ring" />
+                  <p className="text-[10px] text-muted-foreground">e.g. llama3.2, mistral, phi4, gemma3, qwen2.5</p>
+                </div>
+              </div>
+              <div className="bg-muted/60 rounded-md p-3 space-y-1">
+                <p className="text-xs font-semibold">Quick setup on Rocky Linux 9:</p>
+                <pre className="text-[11px] text-muted-foreground font-mono whitespace-pre-wrap leading-relaxed">{`curl -fsSL https://ollama.com/install.sh | sh
+ollama pull llama3.2        # 2GB — fast & capable
+# or: ollama pull mistral   # 4GB — great for analysis
+# or: ollama pull phi4      # 9GB — Microsoft's best small model
+systemctl enable --now ollama`}</pre>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Telegram Bot Section */}

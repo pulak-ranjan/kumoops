@@ -4,7 +4,8 @@ import {
   LayoutDashboard, BarChart3, Globe, ShieldCheck, Key, MailWarning, Network,
   ListOrdered, Webhook, Settings, FileText, Lock, LogOut, Menu, X, ServerCog,
   Wrench, Thermometer, Sliders, Layers, Ban, Bell, BadgeCheck, PieChart,
-  ShieldAlert, Server, ChevronDown, Circle, Terminal
+  ShieldAlert, Server, ChevronDown, Circle, Terminal, Activity, Zap,
+  Inbox, Clock, FlaskConical, Router, Share2, Brain
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeProvider';
 import { useAuth } from '../AuthContext';
@@ -99,7 +100,11 @@ export default function Layout({ children }) {
     {
       label: 'Deliverability',
       links: [
-        { path: '/bounce', icon: MailWarning, label: 'Bounce' },
+        { path: '/fbl', icon: ShieldAlert, label: 'FBL & Bounces' },
+        { path: '/isp-intel', icon: Globe, label: 'ISP Intelligence' },
+        { path: '/anomalies', icon: Activity, label: 'Anomaly & Throttle' },
+        { path: '/inbox-placement', icon: Inbox, label: 'Inbox Placement' },
+        { path: '/bounce', icon: MailWarning, label: 'Bounce Accounts' },
         { path: '/bounce-analytics', icon: PieChart, label: 'Bounce Analytics' },
         { path: '/delivery-log', icon: FileText, label: 'Delivery Log' },
         { path: '/reputation', icon: ShieldAlert, label: 'Reputation' },
@@ -108,9 +113,29 @@ export default function Layout({ children }) {
       ],
     },
     {
+      label: 'AI Intelligence',
+      links: [
+        { path: '/ai-advisor', icon: Brain, label: 'AI Advisor' },
+      ],
+    },
+    {
+      label: 'Campaigns',
+      links: [
+        { path: '/ab-testing', icon: FlaskConical, label: 'A/B Testing' },
+        { path: '/send-time', icon: Clock, label: 'Send-Time Optimizer' },
+      ],
+    },
+    {
+      label: 'Infrastructure',
+      links: [
+        { path: '/relay', icon: Router, label: 'SMTP Relay' },
+        { path: '/cluster', icon: Share2, label: 'Cluster' },
+        { path: '/servers', icon: Server, label: 'Remote Servers' },
+      ],
+    },
+    {
       label: 'System',
       links: [
-        { path: '/servers', icon: Server, label: 'Remote Servers' },
         { path: '/apikeys', icon: Key, label: 'API Keys' },
         { path: '/webhooks', icon: Webhook, label: 'Webhooks' },
         { path: '/config', icon: ServerCog, label: 'Config Gen' },
@@ -173,7 +198,7 @@ export default function Layout({ children }) {
             <div className="font-bold text-foreground leading-tight">KumoOps</div>
             <div className="flex items-center gap-1.5 mt-0.5">
               <span className="text-xs text-muted-foreground">Admin Panel</span>
-              <span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full leading-none">v0.0.1</span>
+              <span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded-full leading-none">v0.2.0</span>
             </div>
           </div>
         </div>

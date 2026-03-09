@@ -244,6 +244,69 @@ func (s *Server) routes() chi.Router {
 		r.Get("/api/alerts/events", s.handleListAlertEvents)
 		r.Post("/api/alerts/test/{id}", s.handleTestAlert)
 
+		// FBL / Feedback Loop Engine
+		r.Get("/api/fbl", s.handleListFBLRecords)
+		r.Get("/api/fbl/stats", s.handleGetFBLStats)
+		r.Delete("/api/fbl/{id}", s.handleDeleteFBLRecord)
+		r.Post("/api/fbl/upload", s.handleUploadFBL)
+		r.Post("/api/fbl/upload-dsn", s.handleUploadDSN)
+		// DSN Bounce Classifications
+		r.Get("/api/fbl/bounces", s.handleListBounceClassifications)
+		r.Get("/api/fbl/bounces/summary", s.handleGetBounceClassSummary)
+		// VERP Configuration
+		r.Get("/api/fbl/verp", s.handleListVERPConfigs)
+		r.Get("/api/fbl/verp/{domainID}", s.handleGetVERPConfig)
+		r.Post("/api/fbl/verp/{domainID}", s.handleSetVERPConfig)
+
+		// ISP Intelligence
+		r.Get("/api/isp-intel/snapshots", s.handleListISPSnapshots)
+		r.Get("/api/isp-intel/snapshots/latest", s.handleGetLatestISPSnapshots)
+		r.Post("/api/isp-intel/refresh", s.handleRefreshISPIntel)
+		r.Get("/api/isp-intel/metrics", s.handleGetISPMetrics)
+
+		// Adaptive Throttle
+		r.Get("/api/throttle/logs", s.handleListThrottleLogs)
+		r.Post("/api/throttle/run", s.handleRunAdaptiveThrottle)
+
+		// Anomaly Detection
+		r.Get("/api/anomalies", s.handleListAnomalyEvents)
+		r.Get("/api/anomalies/active", s.handleListActiveAnomalies)
+		r.Post("/api/anomalies/{id}/resolve", s.handleResolveAnomaly)
+
+		// Inbox Placement Testing
+		r.Get("/api/placement/mailboxes", s.handleListSeedMailboxes)
+		r.Post("/api/placement/mailboxes", s.handleCreateSeedMailbox)
+		r.Delete("/api/placement/mailboxes/{id}", s.handleDeleteSeedMailbox)
+		r.Get("/api/placement/tests", s.handleListPlacementTests)
+		r.Post("/api/placement/tests", s.handleCreatePlacementTest)
+		r.Get("/api/placement/tests/{id}", s.handleGetPlacementTest)
+
+		// A/B Testing
+		r.Get("/api/campaigns/{id}/variants", s.handleListVariants)
+		r.Post("/api/campaigns/{id}/variants", s.handleCreateVariant)
+		r.Delete("/api/campaigns/{id}/variants/{vid}", s.handleDeleteVariant)
+		r.Post("/api/campaigns/{id}/variants/{vid}/set-winner", s.handleSetABWinner)
+		r.Get("/api/campaigns/{id}/ab-summary", s.handleGetABSummary)
+
+		// Send-Time Optimization
+		r.Get("/api/analytics/send-time", s.handleSendTimeHeatmap)
+
+		// SMTP Relay Management
+		r.Get("/api/relay/status", s.handleGetRelayStatus)
+		r.Put("/api/relay/settings", s.handleUpdateRelaySettings)
+		r.Post("/api/relay/apply", s.handleApplyRelayConfig)
+
+		// Cluster / Multi-Node
+		r.Get("/api/cluster/nodes", s.handleListClusterNodes)
+		r.Post("/api/cluster/push-config", s.handleClusterPushConfig)
+		r.Get("/api/cluster/metrics", s.handleClusterMetrics)
+
+		// AI Intelligence Layer (Phase 5)
+		r.Get("/api/ai/deliverability-advisor", s.handleDeliverabilityAdvisor)
+		r.Post("/api/ai/analyze-content", s.handleAnalyzeContent)
+		r.Post("/api/ai/subject-lines", s.handleGenerateSubjectLines)
+		r.Get("/api/campaigns/{id}/send-score", s.handleCampaignSendScore)
+
 		// Email Auth Tools (BIMI, MTA-STS, TLS-RPT)
 		r.Get("/api/authtools/bimi/{domain}", s.handleGetBIMI)
 		r.Post("/api/authtools/bimi/{domain}", s.handleSetBIMI)
@@ -294,6 +357,13 @@ func (s *Server) routes() chi.Router {
 	tracking := NewTrackingHandler(s.Store)
 	r.Get("/api/track/open/{id}", tracking.HandleTrackOpen)
 	r.Get("/api/track/click/{id}", tracking.HandleTrackClick)
+
+	// --- Unsubscribe Routes (Unprotected, public-facing) ---
+	r.Get("/unsubscribe/{token}", s.handleUnsubscribePage)
+	r.Post("/unsubscribe/{token}", s.handleUnsubscribePost)
+
+	// --- HTTP Sending API (API-key authenticated, separate auth) ---
+	r.Post("/api/v1/messages", s.handleAPISendMessage)
 
 	// --- Analytics (Protected) ---
 	r.Group(func(r chi.Router) {

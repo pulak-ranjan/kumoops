@@ -33,6 +33,15 @@ import DeliveryLogPage from './pages/DeliveryLogPage';
 import ReputationPage from './pages/ReputationPage';
 import ServersPage from './pages/ServersPage';
 import LiveLogsPage from './pages/LiveLogsPage';
+import FBLPage from './pages/FBLPage';
+import ISPIntelPage from './pages/ISPIntelPage';
+import AnomalyPage from './pages/AnomalyPage';
+import InboxPlacementPage from './pages/InboxPlacementPage';
+import SendTimePage from './pages/SendTimePage';
+import ABTestPage from './pages/ABTestPage';
+import RelayPage from './pages/RelayPage';
+import ClusterPage from './pages/ClusterPage';
+import AIAdvisorPage from './pages/AIAdvisorPage';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -78,6 +87,15 @@ export default function App() {
             <Route path="/reputation" element={<ProtectedRoute><ReputationPage /></ProtectedRoute>} />
             <Route path="/servers" element={<ProtectedRoute><ServersPage /></ProtectedRoute>} />
             <Route path="/live-logs" element={<ProtectedRoute><LiveLogsPage /></ProtectedRoute>} />
+            <Route path="/fbl" element={<ProtectedRoute><FBLPage /></ProtectedRoute>} />
+            <Route path="/isp-intel" element={<ProtectedRoute><ISPIntelPage /></ProtectedRoute>} />
+            <Route path="/anomalies" element={<ProtectedRoute><AnomalyPage /></ProtectedRoute>} />
+            <Route path="/inbox-placement" element={<ProtectedRoute><InboxPlacementPage /></ProtectedRoute>} />
+            <Route path="/send-time" element={<ProtectedRoute><SendTimePage /></ProtectedRoute>} />
+            <Route path="/ab-testing" element={<ProtectedRoute><ABTestPage /></ProtectedRoute>} />
+            <Route path="/relay" element={<ProtectedRoute><RelayPage /></ProtectedRoute>} />
+            <Route path="/cluster" element={<ProtectedRoute><ClusterPage /></ProtectedRoute>} />
+            <Route path="/ai-advisor" element={<ProtectedRoute><AIAdvisorPage /></ProtectedRoute>} />
 
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>

@@ -127,7 +127,7 @@ Allowed Commands:
 	finalMessages = append(finalMessages, contextMsgs...)
 
 	// 4. Call AI Provider using the DECRYPTED key
-	rawReply, err := s.sendToAI(settings.AIProvider, aiKey, finalMessages)
+	rawReply, err := s.sendToAI(settings, aiKey, finalMessages)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -238,14 +238,43 @@ func (s *Server) runSafeTool(cmdName, args string) string {
 	}
 }
 
-// Helper to send chat context to OpenAI/DeepSeek
-func (s *Server) sendToAI(provider, key string, messages []ChatMessage) (string, error) {
-	url := "https://api.openai.com/v1/chat/completions"
-	model := "gpt-3.5-turbo"
-	if provider == "deepseek" {
-		url = "https://api.deepseek.com/chat/completions"
-		model = "deepseek-chat"
+// Helper to send chat context to any supported AI provider
+func (s *Server) sendToAI(settings *models.AppSettings, key string, messages []ChatMessage) (string, error) {
+	provider := settings.AIProvider
+	if provider == "anthropic" {
+		return s.sendToAnthropic(key, messages)
 	}
+
+	// All remaining providers use OpenAI-compatible chat completions format
+	type providerConfig struct {
+		url   string
+		model string
+	}
+	cfgMap := map[string]providerConfig{
+		"openai":   {"https://api.openai.com/v1/chat/completions", "gpt-4o-mini"},
+		"deepseek": {"https://api.deepseek.com/chat/completions", "deepseek-chat"},
+		"gemini":   {"https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", "gemini-2.0-flash"},
+		"groq":     {"https://api.groq.com/openai/v1/chat/completions", "llama-3.3-70b-versatile"},
+		"mistral":  {"https://api.mistral.ai/v1/chat/completions", "mistral-small-latest"},
+		"together": {"https://api.together.xyz/v1/chat/completions", "meta-llama/Llama-3.2-11B-Vision-Instruct-Turbo"},
+	}
+
+	cfg, known := cfgMap[provider]
+	if !known {
+		// Ollama: self-hosted on VPS, OpenAI-compat at custom base URL
+		baseURL := settings.OllamaBaseURL
+		if baseURL == "" {
+			baseURL = "http://localhost:11434"
+		}
+		ollamaModel := settings.OllamaModel
+		if ollamaModel == "" {
+			ollamaModel = "llama3.2"
+		}
+		cfg = providerConfig{baseURL + "/v1/chat/completions", ollamaModel}
+	}
+
+	apiURL := cfg.url
+	model := cfg.model
 
 	payloadMsgs := make([]map[string]string, len(messages))
 	for i, m := range messages {
@@ -257,7 +286,7 @@ func (s *Server) sendToAI(provider, key string, messages []ChatMessage) (string,
 		"messages": payloadMsgs,
 	})
 
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	req, _ := http.NewRequest("POST", apiURL, bytes.NewBuffer(reqBody))
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+key)
 
@@ -282,8 +311,68 @@ func (s *Server) sendToAI(provider, key string, messages []ChatMessage) (string,
 	if len(choices) > 0 {
 		if c, ok := choices[0].(map[string]interface{}); ok {
 			if m, ok := c["message"].(map[string]interface{}); ok {
-				return m["content"].(string), nil
+				if content, ok := m["content"].(string); ok {
+					return content, nil
+				}
 			}
+		}
+	}
+	return "No response.", nil
+}
+
+// sendToAnthropic handles Anthropic Claude API format
+func (s *Server) sendToAnthropic(key string, messages []ChatMessage) (string, error) {
+	// Separate system prompt from conversation
+	var systemContent string
+	var convMsgs []map[string]string
+
+	for _, m := range messages {
+		if m.Role == "system" {
+			systemContent = m.Content
+		} else {
+			convMsgs = append(convMsgs, map[string]string{"role": m.Role, "content": m.Content})
+		}
+	}
+
+	payload := map[string]interface{}{
+		"model":      "claude-3-5-haiku-20241022",
+		"max_tokens": 2048,
+		"messages":   convMsgs,
+	}
+	if systemContent != "" {
+		payload["system"] = systemContent
+	}
+
+	reqBody, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", "https://api.anthropic.com/v1/messages", bytes.NewBuffer(reqBody))
+	req.Header.Set("content-type", "application/json")
+	req.Header.Set("x-api-key", key)
+	req.Header.Set("anthropic-version", "2023-06-01")
+
+	client := &http.Client{Timeout: 60 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("Anthropic API Error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", err
+	}
+	for _, c := range result.Content {
+		if c.Type == "text" {
+			return c.Text, nil
 		}
 	}
 	return "No response.", nil
