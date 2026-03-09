@@ -1,4 +1,4 @@
-# KumoMTA UI Testing Guide
+# KumoOps Testing Guide
 
 ## Overview
 

@@ -80,7 +80,7 @@ func (ws *WebhookService) getSenderName() string {
 	if err == nil && settings != nil && settings.MainHostname != "" {
 		return settings.MainHostname
 	}
-	return "KumoMTA UI"
+	return "KumoOps"
 }
 
 // 1. Audit Log (Task Modifications)
@@ -252,7 +252,7 @@ func (ws *WebhookService) SendTestWebhook(webhookURL string) error {
 				Title:       "✅ Test Successful",
 				Description: "Webhook is working correctly.",
 				Color:       5763719, // Green
-				Footer:      &DiscordFooter{Text: "KumoMTA UI"},
+				Footer:      &DiscordFooter{Text: "KumoOps"},
 				Timestamp:   time.Now().Format(time.RFC3339),
 			}},
 		}
@@ -301,6 +301,44 @@ func (ws *WebhookService) CheckBounceRates() error {
 		return ws.sendAlert("⚠️ High Bounce Rate", "Domains exceeding threshold:", alerts, 15158332)
 	}
 	return nil
+}
+
+// SendAlert sends a plain markdown message to both the configured webhook (Slack/Discord)
+// and Telegram. Used by the anomaly detector and other autonomous subsystems.
+func (ws *WebhookService) SendAlert(msg string) {
+	// Webhook (Slack / Discord)
+	settings, err := ws.Store.GetSettings()
+	if err == nil && settings != nil && settings.WebhookEnabled && settings.WebhookURL != "" {
+		isDiscord := strings.Contains(settings.WebhookURL, "discord.com")
+		senderName := ws.getSenderName()
+		var payload []byte
+		if isDiscord {
+			dm := DiscordMessage{
+				Username: senderName,
+				Embeds: []DiscordEmbed{{
+					Description: msg,
+					Color:       15158332, // orange-ish
+					Footer:      &DiscordFooter{Text: "KumoOps Anomaly"},
+					Timestamp:   time.Now().Format(time.RFC3339),
+				}},
+			}
+			payload, _ = json.Marshal(dm)
+		} else {
+			sm := SlackMessage{
+				Username:  senderName,
+				IconEmoji: ":warning:",
+				Text:      msg,
+			}
+			payload, _ = json.Marshal(sm)
+		}
+		_ = ws.send(settings.WebhookURL, payload, "anomaly_alert")
+	}
+
+	// Telegram
+	if err == nil && settings != nil && settings.TelegramEnabled && settings.TelegramBotToken != "" {
+		tb := &TelegramBot{Store: ws.Store}
+		tb.broadcastAll(settings.TelegramBotToken, settings.TelegramChatID, label(settings, msg))
+	}
 }
 
 // --- Internals ---

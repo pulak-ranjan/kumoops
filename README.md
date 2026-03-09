@@ -1,12 +1,12 @@
 # KumoOps
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)
+![License](https://img.shields.io/badge/license-AGPLv3-green.svg)
 ![Status](https://img.shields.io/badge/status-active-purple.svg)
-![Go](https://img.shields.io/badge/Go-1.22+-00ADD8.svg)
+![Go](https://img.shields.io/badge/Go-1.24+-00ADD8.svg)
 ![React](https://img.shields.io/badge/React-18-61DAFB.svg)
 
-**KumoOps** is a full-featured operations platform for [KumoMTA](https://kumomta.com). It combines a polished web dashboard, an AI-powered log analyser, and full two-way bots for **Telegram** and **Discord** into a single self-hosted binary — no cloud dependency, runs entirely on your VPS.
+**KumoOps** is a full-featured operations platform for [KumoMTA](https://kumomta.com). It combines a polished web dashboard, an AI-powered log analyser, multi-provider AI intelligence, and full two-way bots for **Telegram** and **Discord** into a single self-hosted binary — no cloud dependency, runs entirely on your VPS.
 
 > Formerly "KumoMTA UI" — grown from a simple control panel into a complete MTA operations suite.
 
@@ -16,10 +16,10 @@
 
 | Layer | Stack |
 |---|---|
-| Backend | Go 1.22+, chi router, GORM, SQLite |
-| Frontend | React 18, Vite, Tailwind CSS |
+| Backend | Go 1.24+, chi router, GORM, SQLite |
+| Frontend | React 18, Vite 5, Tailwind CSS 3 |
 | Bots | Telegram (long-poll) + Discord (interactions endpoint) |
-| AI | Claude API — log analysis and operational insights |
+| AI | 8 providers: OpenAI, Anthropic Claude, Gemini, Groq, Mistral, Together AI, DeepSeek, Ollama (local) |
 
 ---
 
@@ -30,13 +30,13 @@
 - **Statistics** — per-domain and per-sender delivery charts (sent, delivered, bounced, deferred, rate) with time-range selector
 - **Delivery Log** — full event log with domain/type/date filters and CSV export
 - **Bounce Analytics** — breakdown by ISP, bounce category, and trend over time
-- **AI Log Analysis** — Claude-powered analyser: spots errors, explains log entries, suggests fixes in plain English
+- **AI Log Analysis** — floating AI assistant chat: spots errors, explains log entries, suggests fixes, executes safe tools (`status`, `queue`, `logs_kumo`, `block_ip`, `dig`, etc.)
 
 ### Email Infrastructure Management
 - **Domains** — add sending domains, verify SPF / DKIM / DMARC DNS records
 - **DKIM** — generate, rotate, and publish DKIM keys per selector
 - **DMARC** — policy builder and aggregate report viewer
-- **Auth Tools** — end-to-end email authentication tester
+- **Auth Tools** — end-to-end email authentication tester (BIMI, MTA-STS, SPF/DKIM/DMARC live checker)
 - **IP Inventory** — manage dedicated IPs with pool assignment
 - **IP Pools** — group IPs by purpose (transactional, bulk, warmup)
 - **IP Warmup** — automated warmup schedules with daily volume ramps and progress tracking
@@ -44,14 +44,43 @@
 - **Reputation** — DNSBL blacklist checks (Spamhaus, SORBS, Barracuda, etc.) with alerting on new listings
 - **Config Generator** — GUI-based KumoMTA `.lua` config builder
 
+### Deliverability Intelligence (Phase 2)
+- **FBL + Complaint Management** — RFC 5965 ARF/FBL parser; complaint stats, ISP breakdown, suppression auto-apply
+- **DSN / Bounce Classification** — RFC 3464 DSN parser; bounce categorisation (hard/soft/spam) with per-ISP analytics
+- **VERP Engine** — HMAC-SHA256 VERP encode/decode for per-recipient bounce isolation
+- **ISP Intelligence** — Google Postmaster Tools integration (domain reputation, IP reputation, spam rate, DKIM rate, FBL rate); Microsoft SNDS integration; 7-day trend sparklines per ISP
+- **Adaptive Throttling** — auto-tightens per-ISP sending rates when reputation drops; auto-relaxes when reputation recovers; every 5-minute cycle with full audit log
+- **Anomaly Detection & Self-Healing** — detects bounce spikes, complaint spikes, queue buildup, delivery rate drops; applies auto-fixes (pause campaign, tighten throttle); fires alerts
+
 ### Campaigns
 - Create campaigns and send to contact lists
 - Real-time send progress, pause / resume mid-flight
 - Per-campaign delivery stats
 - Contact list import (CSV / JSON)
+- **A/B Testing** — define subject/body variants with split percentages per campaign; automated winner selection (by open rate or click rate) every 5 minutes; manual winner selection with one click
+- **Send-Time Optimization** — 7×24 engagement heatmap from opened/clicked timestamps; top-5 time-slot recommendations per campaign type
+
+### Advanced Sending (Phase 3/4)
+- **Inbox Placement Testing** — manage seed mailboxes (IMAP); send test emails and check inbox / spam / missing placement across providers; per-test history with per-mailbox results
+- **SMTP Relay Management** — configure KumoOps as a relay hub; manage allowed relay IPs, connection limits, rate limits; view active relay connections
+- **HTTP Sending API** — Mailgun-compatible `POST /api/v1/messages` endpoint; use any API key with `send` scope; returns queue ID and status; dead simple integration for MailWizz, Mautic, Python, etc.
+- **Multi-Node Cluster** — register remote KumoOps nodes; health check per node; aggregate metrics dashboard; push config to all nodes with one click
+
+### AI Intelligence Layer (Phase 5)
+- **Deliverability Advisor** — aggregates ISP reputation, anomaly events, FBL complaints, bounce classifications, and throttle adjustments → sends to AI → returns structured score (0–100), trend, ranked issues, and detailed analysis in Markdown
+- **Content Analyzer** — paste HTML + subject line → AI scores spam risk (0–10) and deliverability (0–100); lists specific issues and actionable suggestions
+- **Subject Line Generator** — provide topic, audience, tone, and goal → AI generates N variants with style tags (curiosity / urgency / benefit / social-proof / personal / question), emoji version, and reasoning notes
+- **Pre-Send Campaign Score** — local computed check (no AI cost): validates subject length, body/HTML ratio, sender reputation, recipient list quality, active anomalies, unsubscribe config → A–F grade with per-factor breakdown and blocker list
+
+### API Keys
+- Generate scoped API keys (`kumo_xxxxxx` format)
+- Scopes: `send`, `relay`, `verify`, `cluster`, `read`
+- Full table with key prefix, scopes, created date, last-used timestamp
+- One-time key reveal modal (shown only at creation)
+- Multi-VPS cluster setup guide built into the page
 
 ### Alerting & Notifications
-- Configurable triggers: bounce-rate spike, blacklist hit, queue depth, service down
+- Configurable triggers: bounce-rate spike, blacklist hit, queue depth, service down, anomaly detected
 - Delivery channels: Telegram, Discord webhook, email
 - Per-domain alert thresholds
 
@@ -64,10 +93,41 @@
 - **System Tools** — start / stop / restart / reload KumoMTA, view systemd journal
 - **Live Logs** — real-time log stream in the browser (WebSocket)
 - **Security** — Fail2Ban integration, login audit log, IP block/allow list
-- **API Keys** — generate tokens for external API access
+- **API Keys** — scoped tokens for external API access and multi-VPS cluster auth
 - **Webhooks** — outgoing webhooks for delivery events
 - **Remote Servers** — manage multiple KumoMTA instances from one panel
 - **2FA** — TOTP two-factor authentication (Google Authenticator, Authy, etc.)
+
+---
+
+## AI Providers
+
+KumoOps supports 8 AI providers. Set your preferred provider in **Settings → AI Configuration**.
+
+| Provider | Model | Type | Notes |
+|---|---|---|---|
+| **OpenAI** | GPT-4o-mini | ☁️ Cloud | Best general quality |
+| **Anthropic** | Claude 3.5 Haiku | ☁️ Cloud | Great at structured analysis |
+| **Google Gemini** | Gemini 2.0 Flash | ☁️ Cloud | Fast, generous free tier |
+| **Groq** | Llama 3.3 70B | ☁️ Cloud | Very fast, generous free tier |
+| **Mistral** | Mistral Small | ☁️ Cloud | European-hosted, privacy-friendly |
+| **Together AI** | Llama 3.2 11B | ☁️ Cloud | Open model, affordable |
+| **DeepSeek** | DeepSeek Chat | ☁️ Cloud | Excellent reasoning, low cost |
+| **Ollama** | Any local model | 🖥️ Local | **FREE** — runs on your VPS, no API key |
+
+### Ollama Setup (local, free)
+
+```bash
+# Install Ollama on your VPS
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Pull a model
+ollama pull llama3.2       # 2GB — fast
+ollama pull mistral        # 4GB — better quality
+ollama pull llama3.1:8b   # 5GB — excellent
+
+# Ollama runs at http://localhost:11434 — set this as Base URL in Settings
+```
 
 ---
 
@@ -109,7 +169,7 @@ Both Telegram and Discord support the full command set.
 
 - Linux VPS (Rocky Linux 9 recommended)
 - [KumoMTA](https://docs.kumomta.com) installed and running
-- Go 1.22+ *(build only)*
+- Go 1.24+ *(build only)*
 - Node.js 20+ *(build only)*
 
 ### Quick Install (Rocky Linux 9)
@@ -152,17 +212,18 @@ go build -o kumoops ./cmd/server/main.go
 
 ```bash
 ./kumoops
-# → listening on :8080
+# → listening on :9000
 ```
 
 **Environment variables:**
 
 | Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8080` | HTTP listen port |
+| `PORT` | `9000` | HTTP listen port |
 | `DB_PATH` | `./kumoops.db` | SQLite database path |
 | `JWT_SECRET` | auto-generated | Override JWT signing secret |
 | `KUMOMTA_API` | `http://127.0.0.1:8000` | KumoMTA HTTP API base URL |
+| `KUMO_APP_SECRET` | auto-generated | AES-256 encryption key for stored secrets (AI keys, SMTP passwords) |
 
 ### systemd service
 
@@ -177,7 +238,8 @@ ExecStart=/opt/kumoops/kumoops
 WorkingDirectory=/opt/kumoops
 Restart=always
 RestartSec=5
-Environment=PORT=8080
+Environment=PORT=9000
+Environment=KUMO_APP_SECRET=your-32-char-random-secret-here
 
 [Install]
 WantedBy=multi-user.target
@@ -190,7 +252,7 @@ sudo systemctl enable --now kumoops
 
 ### First login
 
-Open `http://your-server:8080` — you will be prompted to create the admin account on first visit. Enable 2FA from the Settings page afterwards.
+Open `http://your-server:9000` — you will be prompted to create the admin account on first visit. Enable 2FA from the Settings page afterwards.
 
 ---
 
@@ -220,30 +282,81 @@ Discord requires a public HTTPS endpoint for interactions:
 
 ---
 
+## Multi-VPS Cluster Setup
+
+KumoOps supports managing multiple KumoMTA servers from a single primary dashboard.
+
+```
+VPS-1 (Primary)          VPS-2 (Secondary)
+┌─────────────────┐      ┌──────────────────┐
+│   KumoOps UI    │ ──── │   KumoOps        │
+│   (main panel)  │      │   (API only)     │
+│   :9000         │      │   :9000          │
+└─────────────────┘      └──────────────────┘
+```
+
+**Steps:**
+1. On **VPS-2** → Settings → API Keys → **Create Key** → select `cluster` scope → copy `kumo_xxx`
+2. On **VPS-1** → Remote Servers → **Add Server** → set URL to `https://vps2.yourdomain.com` and paste the `kumo_xxx` key as API Token
+3. VPS-1 now shows VPS-2 health, metrics, and can push config to it
+
+---
+
+## HTTP Sending API (Mailgun-Compatible)
+
+KumoOps exposes a Mailgun-compatible sending API. Any app that supports Mailgun can connect directly.
+
+```bash
+# Send an email via the HTTP API
+curl -X POST https://your-server/api/v1/messages \
+  -H "Authorization: kumo_your_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "to": "recipient@example.com",
+    "from_email": "sender@yourdomain.com",
+    "from_name": "My App",
+    "subject": "Hello from KumoOps",
+    "html": "<p>Hello world!</p>",
+    "text": "Hello world!"
+  }'
+```
+
+Generate an API key with `send` scope from **Settings → API Keys**.
+
+---
+
 ## Architecture
 
 ```mermaid
 flowchart TD
     subgraph KumoOps [KumoOps Platform]
-        React["React / Vite<br/>(embedded)"]
-        API["Go HTTP API<br/>(chi router)"]
-        DB[("SQLite DB<br/>(GORM)")]
-        
+        React["React / Vite\n(embedded)"]
+        API["Go HTTP API\n(chi router)"]
+        DB[("SQLite DB\n(GORM)")]
+
         API --> React
         API --> DB
-        
-        BotT["Telegram Bot<br/>(long-poll)"]
-        BotD["Discord Bot<br/>(interactions)"]
-        Alert["Alert Checker<br/>(background)"]
-        
+
+        BotT["Telegram Bot\n(long-poll)"]
+        BotD["Discord Bot\n(interactions)"]
+        Alert["Alert Checker\n(background)"]
+        Sched["Scheduler\n5min / 1h / 24h ticks"]
+
         API --> BotT
         API --> BotD
         API --> Alert
+        API --> Sched
     end
-    
-    MTA["KumoMTA HTTP API<br/>(queue / delivery events / rebind / metrics)"]
-    
+
+    MTA["KumoMTA HTTP API\n(queue / delivery / metrics)"]
+    AI["AI Providers\n(OpenAI, Claude, Gemini,\nGroq, Mistral, Ollama...)"]
+    Google["Google Postmaster\n(ISP Reputation)"]
+    SNDS["Microsoft SNDS\n(IP Reputation)"]
+
     API -.-> MTA
+    API -.-> AI
+    Sched -.-> Google
+    Sched -.-> SNDS
     BotT -.-> MTA
     BotD -.-> MTA
     Alert -.-> MTA
@@ -253,12 +366,12 @@ flowchart TD
 
 | Path | Purpose |
 |---|---|
-| `cmd/server` | Entry point — starts HTTP server + Telegram bot goroutine |
-| `internal/api/` | HTTP handlers — one file per domain (38 files) |
-| `internal/core/` | Business logic — stats, queue, bots, alerting, DKIM, DMARC, reputation, config gen, campaigns |
-| `internal/models/` | GORM model definitions |
+| `cmd/server` | Entry point — starts HTTP server + background goroutines |
+| `internal/api/` | HTTP handlers — one file per domain (~40 files) |
+| `internal/core/` | Business logic — stats, queue, bots, alerting, DKIM, DMARC, FBL, DSN, VERP, ISP intel, anomaly, adaptive throttle, config gen, campaigns |
+| `internal/models/` | GORM model definitions (25+ tables) |
 | `internal/store/` | Database layer — queries and CRUD |
-| `web/src/` | React frontend (Vite, Tailwind CSS) |
+| `web/src/` | React frontend (Vite 5, Tailwind CSS 3) |
 
 ---
 
@@ -272,8 +385,9 @@ All endpoints require `Authorization: Bearer <token>` (token returned at login),
 | `POST /api/auth/login` | Public |
 | `POST /api/auth/verify-2fa` | Public |
 | `POST /api/discord/interactions` | Ed25519 signature (Discord) |
+| `POST /api/v1/messages` | API Key (`send` scope) |
 
-All routes are registered in `internal/api/server.go`. A full OpenAPI spec is on the roadmap.
+See [docs/API.md](docs/API.md) for the full endpoint reference.
 
 ---
 
@@ -289,7 +403,7 @@ Switch between **Light**, **System**, and **Dark** from the sidebar footer. The 
 # Backend with hot reload (requires github.com/air-verse/air)
 air
 
-# Frontend dev server with HMR (proxies /api/* to :8080)
+# Frontend dev server with HMR (proxies /api/* to :9000)
 cd web && npm run dev
 ```
 
@@ -303,12 +417,15 @@ cd web && npm run dev
 - [ ] Slack bot integration
 - [ ] Docker / docker-compose setup
 - [ ] Prometheus metrics endpoint
+- [ ] Webhooks for FBL/complaint events
+- [ ] Scheduled config apply (time-based deployment)
+- [ ] Bulk DKIM rotation across all domains
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GNU AGPLv3 — see [LICENSE](LICENSE).
 
 ---
 

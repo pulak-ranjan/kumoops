@@ -2,7 +2,7 @@
 
 ## Security Features
 
-KumoMTA UI implements robust security measures to protect your email infrastructure:
+KumoOps implements robust security measures to protect your email infrastructure:
 
 ### 🔐 Authentication & Access
 

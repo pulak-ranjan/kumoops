@@ -49,8 +49,8 @@ function TestEmailPanel() {
   const [form, setForm] = useState({
     sender: "",
     recipient: "",
-    subject: "Test from KumoMTA UI",
-    body: "This is a test email sent via the KumoMTA Control Panel.\n\nTime: " + new Date().toLocaleString()
+    subject: "Test from KumoOps",
+    body: "This is a test email sent via the KumoOps panel.\n\nTime: " + new Date().toLocaleString()
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);

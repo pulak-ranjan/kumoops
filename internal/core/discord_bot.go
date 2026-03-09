@@ -308,7 +308,7 @@ func (db *DiscordBot) handleSlash(ix DiscordInteraction, userID string, settings
 				{Name: "⏳ Deferred", Value: fmt.Sprintf("`%d`", deferred), Inline: true},
 				{Name: "📈 Rate", Value: fmt.Sprintf("`%.1f%%`", rate), Inline: true},
 			},
-			Footer:    &DiscordEmbedFooter{Text: "KumoMTA UI"},
+			Footer:    &DiscordEmbedFooter{Text: "KumoOps"},
 			Timestamp: time.Now().Format(time.RFC3339),
 		}
 		return db.embedFromStruct(embed, false), nil
@@ -687,7 +687,7 @@ func (db *DiscordBot) embedResp(title, desc string, color int, ephemeral bool) [
 		Type: discordRespChannelMessage,
 		Data: &DiscordResponseData{
 			Embeds: []DiscordBotEmbed{{Title: title, Description: desc, Color: color,
-				Footer: &DiscordEmbedFooter{Text: "KumoMTA UI"}, Timestamp: time.Now().Format(time.RFC3339)}},
+				Footer: &DiscordEmbedFooter{Text: "KumoOps"}, Timestamp: time.Now().Format(time.RFC3339)}},
 			Flags: flags,
 		},
 	})

@@ -69,7 +69,7 @@ export default function LoginRegister() {
               {step === 2 ? "Two-Factor Auth" : "KumoOps"}
             </h1>
             {step !== 2 && (
-              <p className="text-xs text-muted-foreground mt-1 font-medium tracking-wide uppercase">Admin Panel &nbsp;·&nbsp; v0.0.1</p>
+              <p className="text-xs text-muted-foreground mt-1 font-medium tracking-wide uppercase">Admin Panel &nbsp;·&nbsp; v0.2.0</p>
             )}
           </div>
         </div>

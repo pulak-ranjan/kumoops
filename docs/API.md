@@ -1,12 +1,55 @@
-# KumoMTA UI — API Reference
+# KumoOps — API Reference
 
-**Version:** 0.0.1
-**Base URL:** `http://your-server:9000/api` or `https://your-domain/api`
+**Version:** 0.2.0
+**Base URL:** `http://your-server:9000/api` (or `https://your-domain/api`)
+**License:** GNU AGPLv3
+
+---
+
+## Table of Contents
+
+- [Authentication](#-authentication)
+- [Domains & Senders](#-domains--senders)
+- [Bounce Accounts](#-bounce-accounts)
+- [DNS & Authentication (DKIM/DMARC)](#%EF%B8%8F-dns--authentication)
+- [FBL + DSN + Bounce Intelligence](#-fbl--dsn--bounce-intelligence)
+- [ISP Intelligence](#-isp-intelligence)
+- [Adaptive Throttling](#-adaptive-throttling)
+- [Anomaly Detection](#-anomaly-detection)
+- [Inbox Placement Testing](#-inbox-placement-testing)
+- [Traffic Shaping](#-traffic-shaping)
+- [Send-Time Optimization](#-send-time-optimization)
+- [A/B Testing](#-ab-testing)
+- [SMTP Relay](#-smtp-relay)
+- [Multi-Node Cluster](#-multi-node-cluster)
+- [API Keys](#-api-keys)
+- [HTTP Sending API (Mailgun-Compatible)](#-http-sending-api-mailgun-compatible)
+- [AI Chat](#-ai-chat)
+- [AI Intelligence (Advisor)](#-ai-intelligence-advisor)
+- [Webhooks & Automation](#-webhooks--automation)
+- [System & Networking](#%EF%B8%8F-system--networking)
+- [Configuration & Queue](#%EF%B8%8F-configuration--queue)
+- [Logs](#-logs)
+- [IP Pools](#-ip-pools)
+- [Suppression List](#-suppression-list)
+- [Alert Rules](#-alert-rules)
+- [Email Auth Tools](#%EF%B8%8F-email-auth-tools)
+- [Campaigns](#-campaigns)
+- [Error Responses](#error-responses)
+
+---
 
 ## 🔐 Authentication
 
 All protected endpoints require a Bearer token in the `Authorization` header:
-`Authorization: Bearer <token>`
+```
+Authorization: Bearer <jwt_token>
+```
+
+The HTTP Sending API (`POST /api/v1/messages`) accepts API keys instead:
+```
+Authorization: kumo_your_api_key_here
+```
 
 ### Public Endpoints
 
@@ -47,22 +90,18 @@ Initialize TOTP setup (returns QR code URI).
 - **Response:** `{ "secret": "...", "uri": "otpauth://..." }`
 
 #### Enable 2FA
-Confirm and activate 2FA using a code.
 - **POST** `/auth/enable-2fa`
 - **Body:** `{ "code": "123456" }`
 
 #### Disable 2FA
-Turn off 2FA authentication.
 - **POST** `/auth/disable-2fa`
 - **Body:** `{ "password": "...", "code": "123456" }`
 
 #### Update Theme
-Set user UI preference.
 - **POST** `/auth/theme`
 - **Body:** `{ "theme": "dark" }` (or `light`, `system`)
 
 #### List Sessions
-View active login sessions for the user.
 - **GET** `/auth/sessions`
 
 ---
@@ -70,7 +109,6 @@ View active login sessions for the user.
 ## 📧 Domains & Senders
 
 #### List Domains
-Get all configured domains and their senders.
 - **GET** `/domains`
 
 #### Create Domain
@@ -82,13 +120,9 @@ Get all configured domains and their senders.
 
 #### Update Domain
 - **PUT** `/domains/{id}`
-- **Body:** `{ "dmarc_policy": "reject", ... }`
 
 #### Delete Domain
-Deletes domain and all associated senders.
 - **DELETE** `/domains/{id}`
-
----
 
 #### List Senders
 - **GET** `/domains/{domainID}/senders`
@@ -104,7 +138,7 @@ Deletes domain and all associated senders.
 - **DELETE** `/senders/{id}`
 
 #### Auto-Setup Sender
-Automatically generate DKIM keys and create a system bounce account for a sender.
+Generate DKIM keys and create bounce account for a sender.
 - **POST** `/domains/{domainID}/senders/{id}/setup`
 
 ---
@@ -114,8 +148,8 @@ Automatically generate DKIM keys and create a system bounce account for a sender
 #### List Bounce Accounts
 - **GET** `/bounces`
 
-#### Create/Update Bounce Account
-Creates DB entry AND system user (useradd).
+#### Create Bounce Account
+Creates DB entry AND Linux system user.
 - **POST** `/bounces`
 - **Body:** `{ "username": "b-news", "domain": "example.com", "password": "..." }`
 
@@ -128,14 +162,12 @@ Ensure all DB bounce accounts exist as Linux users.
 
 ---
 
-## 🛡️ DNS & Authentication (DKIM/DMARC)
+## 🛡️ DNS & Authentication
 
 #### List DKIM Keys
-View all active DKIM public keys and selectors.
 - **GET** `/dkim/records`
 
 #### Generate DKIM
-Generate RSA-2048 keys for a domain or specific user.
 - **POST** `/dkim/generate`
 - **Body:** `{ "domain": "example.com", "local_part": "optional_selector" }`
 
@@ -143,123 +175,141 @@ Generate RSA-2048 keys for a domain or specific user.
 - **GET** `/dmarc/{domainID}`
 
 #### Set DMARC Policy
-Generate and save DMARC settings.
 - **POST** `/dmarc/{domainID}`
 - **Body:** `{ "policy": "quarantine", "percentage": 100, "rua": "..." }`
 
-#### Get All DNS
-Preview A, MX, SPF, DMARC, and DKIM records for a domain.
+#### Get All DNS Records
 - **GET** `/dns/{domainID}`
 
 ---
 
-## 🔔 Webhooks & Automation
+## 📨 FBL + DSN + Bounce Intelligence
 
-#### Get Webhook Settings
-- **GET** `/webhooks/settings`
+> Feedback Loop complaint management, DSN bounce classification, and VERP tracking.
 
-#### Update Webhook Settings
-Configure Slack/Discord integration.
-- **POST** `/webhooks/settings`
-- **Body:** `{ "webhook_url": "...", "webhook_enabled": true, "bounce_alert_pct": 5.0 }`
+#### List FBL Records
+Paginated complaint records.
+- **GET** `/fbl/records?page=1&limit=50&isp=gmail`
 
-#### Test Webhook
-Send a test payload.
-- **POST** `/webhooks/test`
-- **Body:** `{ "webhook_url": "..." }`
+#### FBL Stats by ISP
+Complaint counts and rates per ISP (Gmail, Yahoo, etc.).
+- **GET** `/fbl/stats`
 
-#### Webhook Logs
-View recent webhook dispatch history.
-- **GET** `/webhooks/logs`
+#### FBL Record Detail
+- **GET** `/fbl/records/{id}`
 
-#### Manual Trigger: Check Bounces
-Analyze bounce rates immediately and alert if high.
-- **POST** `/webhooks/check-bounces`
+#### Delete FBL Record
+- **DELETE** `/fbl/records/{id}`
 
----
+#### Bulk Delete FBL Records
+- **POST** `/fbl/records/bulk-delete`
+- **Body:** `{ "ids": [1, 2, 3] }`
 
-## 🖥️ System & Networking
+#### Trigger Suppression
+Apply suppressions for all emails in FBL complaint records.
+- **POST** `/fbl/suppress`
 
-#### Dashboard Stats
-Get CPU, RAM, Disk, and Service status.
-- **GET** `/dashboard/stats`
+#### Manual FBL Parse
+Parse a raw FBL email body.
+- **POST** `/fbl/parse`
+- **Body:** `{ "raw": "From: ...\n\nReturn-Path: ..." }`
 
-#### List System IPs
-- **GET** `/system/ips`
+#### List DSN Bounce Classifications
+Classified bounce records.
+- **GET** `/fbl/bounces?category=hard&page=1&limit=50`
 
-#### Add IP
-- **POST** `/system/ips`
-- **Body:** `{ "value": "1.2.3.4", "interface": "eth0" }`
+#### Bounce Summary
+Aggregated bounce stats by category and ISP.
+- **GET** `/fbl/bounces/summary`
 
-#### Bulk Add IPs
-- **POST** `/system/ips/bulk`
-- **Body:** `{ "ips": ["1.2.3.4", "5.6.7.8"] }`
-
-#### Add IPs by CIDR
-- **POST** `/system/ips/cidr`
-- **Body:** `{ "cidr": "192.168.1.0/24" }`
-
-#### Auto-Detect IPs
-Scan network interfaces for available IPv4 addresses.
-- **POST** `/system/ips/detect`
-
-#### Manual Trigger: Check Blacklists
-Scan system IPs against RBLs (Spamhaus, etc.) and alert via Webhook.
-- **POST** `/system/check-blacklist`
-
-#### Manual Trigger: Security Audit
-Scan for file permission issues and open ports.
-- **POST** `/system/check-security`
-
-#### AI Analysis
-Analyze logs or health data using OpenAI/DeepSeek.
-- **POST** `/system/ai-analyze`
-- **Body:** `{ "type": "logs" }` (or `"health"`)
+#### VERP Config
+Get or update VERP encode/decode settings.
+- **GET** `/fbl/verp`
+- **POST** `/fbl/verp` — Body: `{ "enabled": true, "hmac_secret": "...", "bounce_domain": "bounce.example.com" }`
 
 ---
 
-## ⚙️ Configuration & Queue
+## 📡 ISP Intelligence
 
-#### Preview Config
-Generate KumoMTA config files (Lua/TOML) in memory.
-- **GET** `/config/preview`
+> Google Postmaster Tools and Microsoft SNDS reputation data.
 
-#### Apply Config
-Write configs to disk (`/opt/kumomta/etc/policy`) and restart service.
-- **POST** `/config/apply`
+#### Latest ISP Snapshots
+Current reputation snapshot for each configured ISP/domain.
+- **GET** `/isp-intel/snapshots`
 
-#### View Queue
-- **GET** `/queue`
-- **Query:** `?limit=100`
+#### ISP Snapshot History
+7-day trend for a specific domain.
+- **GET** `/isp-intel/snapshots/{domain}?days=7`
 
-#### Queue Stats
-- **GET** `/queue/stats`
+#### Refresh ISP Data
+Trigger an immediate pull from Google Postmaster and SNDS.
+- **POST** `/isp-intel/refresh`
 
-#### Delete Message
-- **DELETE** `/queue/{id}`
-
-#### Flush Queue
-Force retry of deferred messages.
-- **POST** `/queue/flush`
+#### ISP Intel Summary
+Aggregate view: worst/best reputation domains, average scores.
+- **GET** `/isp-intel/summary`
 
 ---
 
-## 📝 Logs
+## ⚡ Adaptive Throttling
 
-#### Service Logs
-View tail of system logs via `journalctl`.
-- **GET** `/logs/kumomta?lines=100`
-- **GET** `/logs/dovecot?lines=100`
-- **GET** `/logs/fail2ban?lines=100`
+#### Throttle Adjustment Log
+All automatic rate changes made by the adaptive throttler.
+- **GET** `/throttle/logs?limit=50`
+
+#### Throttle Status
+Current per-ISP send rate vs. configured limit.
+- **GET** `/throttle/status`
 
 ---
 
-## 📥 Import
+## 🔍 Anomaly Detection
 
-#### Bulk Import
-Import domains and senders from CSV.
-- **POST** `/import/csv`
-- **Form Data:** `file` (CSV file with headers: `domain, localpart, ip, password`)
+#### List Anomaly Events
+Active and resolved anomaly events.
+- **GET** `/anomalies?status=active&limit=50`
+
+#### Anomaly Stats
+Counts by severity and type for the last 24 hours.
+- **GET** `/anomalies/stats`
+
+#### Resolve Anomaly
+Mark an anomaly as resolved.
+- **POST** `/anomalies/{id}/resolve`
+
+#### Suppress Anomaly Type
+Stop alerting for a specific anomaly type temporarily.
+- **POST** `/anomalies/{id}/suppress`
+- **Body:** `{ "duration_hours": 24 }`
+
+---
+
+## 🧪 Inbox Placement Testing
+
+#### List Seed Mailboxes
+- **GET** `/placement/mailboxes`
+
+#### Add Seed Mailbox
+- **POST** `/placement/mailboxes`
+- **Body:** `{ "name": "Gmail Seed", "email": "seed@gmail.com", "imap_host": "imap.gmail.com", "imap_port": 993, "username": "...", "password": "...", "provider": "gmail" }`
+
+#### Update Seed Mailbox
+- **PUT** `/placement/mailboxes/{id}`
+
+#### Delete Seed Mailbox
+- **DELETE** `/placement/mailboxes/{id}`
+
+#### Run Placement Test
+Sends a test email to all active seed mailboxes and checks placement.
+- **POST** `/placement/tests`
+- **Body:** `{ "subject": "Placement Test", "html": "<p>Test</p>", "from_email": "test@yourdomain.com", "campaign_id": 0 }`
+
+#### List Placement Tests
+- **GET** `/placement/tests?limit=20`
+
+#### Get Placement Test Detail
+Per-mailbox results for a specific test.
+- **GET** `/placement/tests/{id}`
 
 ---
 
@@ -281,6 +331,332 @@ Import domains and senders from CSV.
 #### Seed Default Rules
 Load built-in ISP presets (Gmail, Microsoft, Yahoo).
 - **POST** `/shaping/seed`
+
+---
+
+## 📊 Send-Time Optimization
+
+#### Engagement Heatmap
+7×24 engagement matrix (hour-of-week × day-of-week) from delivery events.
+- **GET** `/send-time/heatmap?campaign_id=0` (0 = all campaigns)
+
+#### Time Slot Recommendations
+Top-5 optimal send times with engagement score.
+- **GET** `/send-time/recommendations?campaign_id=0`
+
+---
+
+## 🧬 A/B Testing
+
+#### List Variants for Campaign
+- **GET** `/campaigns/{id}/variants`
+
+#### Create Variant
+- **POST** `/campaigns/{id}/variants`
+- **Body:** `{ "name": "Variant B", "subject": "Alt Subject", "split_pct": 20 }`
+
+#### Update Variant
+- **PUT** `/campaigns/{id}/variants/{variantID}`
+
+#### Delete Variant
+- **DELETE** `/campaigns/{id}/variants/{variantID}`
+
+#### Select Winner
+Manually designate the winning variant. Routes all remaining traffic to it.
+- **POST** `/campaigns/{id}/variants/{variantID}/winner`
+
+#### Variant Stats
+Open rate, click rate, conversion stats per variant.
+- **GET** `/campaigns/{id}/variants/stats`
+
+---
+
+## 📡 SMTP Relay
+
+#### Relay Status
+Current relay service status, connection count, message counters.
+- **GET** `/relay/status`
+
+#### Relay Settings
+- **GET** `/relay/settings`
+- **POST** `/relay/settings` — Body: `{ "enabled": true, "max_connections": 50, "rate_limit": "1000/h" }`
+
+#### List Allowed Relay IPs
+- **GET** `/relay/allowed-ips`
+
+#### Add Allowed IP
+- **POST** `/relay/allowed-ips`
+- **Body:** `{ "ip": "10.0.0.5", "description": "MailWizz server" }`
+
+#### Delete Allowed IP
+- **DELETE** `/relay/allowed-ips/{id}`
+
+#### Relay Connection Log
+Recent relay connection attempts and results.
+- **GET** `/relay/logs?limit=100`
+
+---
+
+## 🌐 Multi-Node Cluster
+
+#### List Cluster Nodes
+- **GET** `/cluster/nodes`
+
+#### Add Cluster Node
+- **POST** `/cluster/nodes`
+- **Body:** `{ "name": "VPS-2", "url": "https://vps2.yourdomain.com", "api_token": "kumo_xxx" }`
+
+#### Delete Cluster Node
+- **DELETE** `/cluster/nodes/{id}`
+
+#### Node Health Check
+Ping a specific node and return latency + service status.
+- **POST** `/cluster/nodes/{id}/ping`
+
+#### All Nodes Health
+Ping all nodes simultaneously.
+- **GET** `/cluster/health`
+
+#### Aggregate Metrics
+Pull and sum delivery metrics from all online nodes.
+- **GET** `/cluster/metrics`
+
+#### Push Config to Nodes
+Push current KumoMTA config to all or selected nodes.
+- **POST** `/cluster/push-config`
+- **Body:** `{ "node_ids": [1, 2] }` (omit to push to all)
+
+---
+
+## 🔑 API Keys
+
+#### List API Keys
+- **GET** `/keys`
+
+#### Create API Key
+- **POST** `/keys`
+- **Body:** `{ "name": "MailWizz Production", "scopes": "send,relay" }`
+- **Response:** `{ "id": 1, "name": "...", "key": "kumo_xxxx", "scopes": "send,relay", "created_at": "..." }`
+  > ⚠️ The full key is only returned once at creation time. Store it securely.
+
+**Available scopes:**
+| Scope | Permission |
+|---|---|
+| `send` | POST /api/v1/messages — HTTP Sending API |
+| `relay` | SMTP relay authentication |
+| `verify` | Email verification endpoints |
+| `cluster` | Multi-node cluster authentication (remote server token) |
+| `read` | Read-only stats and queue access |
+
+#### Delete API Key
+- **DELETE** `/keys/{id}`
+
+---
+
+## 📤 HTTP Sending API (Mailgun-Compatible)
+
+> Requires API key with `send` scope. Use `Authorization: kumo_xxx` header (no "Bearer" prefix).
+
+#### Send Email
+- **POST** `/v1/messages`
+- **Header:** `Authorization: kumo_your_send_key`
+- **Body:**
+```json
+{
+  "to": "recipient@example.com",
+  "from_email": "sender@yourdomain.com",
+  "from_name": "My App",
+  "subject": "Hello!",
+  "html": "<p>Hello world!</p>",
+  "text": "Hello world!",
+  "reply_to": "noreply@yourdomain.com",
+  "cc": "cc@example.com",
+  "bcc": "bcc@example.com"
+}
+```
+- **Response:** `{ "id": "queue_id_xxx", "status": "queued" }`
+
+---
+
+## 🤖 AI Chat
+
+> Requires AI provider configured in Settings.
+
+#### Get Chat History
+Last 50 chat exchanges.
+- **GET** `/ai/history`
+
+#### Send Chat Message
+Send a message to the AI assistant. The assistant may execute safe tools (`status`, `queue`, `logs_kumo`, `block_ip`, `dig`, etc.) and return formatted output.
+- **POST** `/ai/chat`
+- **Body:** `{ "new_msg": "What does my bounce rate look like?" }`
+- **Response:** `{ "reply": "## Bounce Analysis\n\n..." }`
+
+---
+
+## 🧠 AI Intelligence (Advisor)
+
+> Requires AI provider configured in Settings.
+
+#### Deliverability Advisor
+Aggregates ISP reputation, anomalies, FBL data, and bounces → AI-generated deliverability report.
+- **GET** `/ai/deliverability-advisor`
+- **Response:**
+```json
+{
+  "score": 72,
+  "trend": "declining",
+  "issues": [
+    { "severity": "critical", "title": "Gmail spam rate elevated", "action": "Pause Gmail-bound campaigns" }
+  ],
+  "analysis": "## Deliverability Report\n\n...",
+  "generated_at": "2026-03-09T14:00:00Z"
+}
+```
+
+#### Analyze Email Content
+Score a subject + HTML body for spam risk and deliverability.
+- **POST** `/ai/analyze-content`
+- **Body:** `{ "subject": "Big Sale!", "html_body": "<p>Click here!</p>", "sender_domain": "example.com" }`
+- **Response:**
+```json
+{
+  "spam_score": 3.2,
+  "deliverability_score": 78,
+  "issues": ["Subject uses spam trigger word 'Sale'"],
+  "suggestions": ["Add personalisation to subject line"],
+  "analysis": "..."
+}
+```
+
+#### Generate Subject Lines
+Generate AI subject line variants.
+- **POST** `/ai/subject-lines`
+- **Body:** `{ "topic": "Summer sale", "audience": "Existing customers", "tone": "friendly", "goal": "open_rate", "count": 5 }`
+- **Response:**
+```json
+{
+  "variants": [
+    {
+      "text": "Your summer deal is waiting, {{first_name}}",
+      "style": "personal",
+      "emoji_version": "☀️ Your summer deal is waiting, {{first_name}}",
+      "notes": "Personalisation drives opens"
+    }
+  ]
+}
+```
+
+#### Pre-Send Campaign Score
+Local computed readiness check for a campaign. No AI required.
+- **GET** `/campaigns/{id}/send-score`
+- **Response:**
+```json
+{
+  "score": 83,
+  "grade": "B",
+  "checks": [
+    { "name": "Subject Line", "score": 9, "max": 10, "status": "pass", "detail": "Good length and no spam words" },
+    { "name": "Complaint Rate", "score": 16, "max": 20, "status": "warning", "detail": "Complaint rate at 0.12%" }
+  ],
+  "blockers": []
+}
+```
+
+---
+
+## 🔔 Webhooks & Automation
+
+#### Get Webhook Settings
+- **GET** `/webhooks/settings`
+
+#### Update Webhook Settings
+- **POST** `/webhooks/settings`
+- **Body:** `{ "webhook_url": "...", "webhook_enabled": true, "bounce_alert_pct": 5.0 }`
+
+#### Test Webhook
+- **POST** `/webhooks/test`
+- **Body:** `{ "webhook_url": "..." }`
+
+#### Webhook Logs
+- **GET** `/webhooks/logs`
+
+#### Manual: Check Bounces
+- **POST** `/webhooks/check-bounces`
+
+---
+
+## 🖥️ System & Networking
+
+#### Dashboard Stats
+CPU, RAM, Disk, and Service status.
+- **GET** `/dashboard/stats`
+
+#### List System IPs
+- **GET** `/system/ips`
+
+#### Add IP
+- **POST** `/system/ips`
+- **Body:** `{ "value": "1.2.3.4", "interface": "eth0" }`
+
+#### Bulk Add IPs
+- **POST** `/system/ips/bulk`
+- **Body:** `{ "ips": ["1.2.3.4", "5.6.7.8"] }`
+
+#### Add IPs by CIDR
+- **POST** `/system/ips/cidr`
+- **Body:** `{ "cidr": "192.168.1.0/24" }`
+
+#### Auto-Detect IPs
+- **POST** `/system/ips/detect`
+
+#### Manual: Check Blacklists
+- **POST** `/system/check-blacklist`
+
+#### Manual: Security Audit
+- **POST** `/system/check-security`
+
+---
+
+## ⚙️ Configuration & Queue
+
+#### Preview Config
+Generate KumoMTA config files in memory.
+- **GET** `/config/preview`
+
+#### Apply Config
+Write configs to disk and restart KumoMTA service.
+- **POST** `/config/apply`
+
+#### View Queue
+- **GET** `/queue?limit=100`
+
+#### Queue Stats
+- **GET** `/queue/stats`
+
+#### Delete Message
+- **DELETE** `/queue/{id}`
+
+#### Flush Queue
+Force retry of all deferred messages.
+- **POST** `/queue/flush`
+
+---
+
+## 📝 Logs
+
+#### Service Logs
+- **GET** `/logs/kumomta?lines=100`
+- **GET** `/logs/dovecot?lines=100`
+- **GET** `/logs/fail2ban?lines=100`
+
+---
+
+## 📥 Import
+
+#### Bulk Import (CSV)
+- **POST** `/import/csv`
+- **Form Data:** `file` (CSV with headers: `domain, localpart, ip, password`)
 
 ---
 
@@ -323,13 +699,12 @@ Load built-in ISP presets (Gmail, Microsoft, Yahoo).
 #### Check Email
 - **GET** `/suppression/check?email=user@example.com`
 
-#### Bulk Add Entries
+#### Bulk Add
 - **POST** `/suppression/bulk`
 - **Body:** `{ "emails": ["a@x.com", "b@x.com"], "reason": "complaint" }`
 
 #### Export List
 - **GET** `/suppression/export`
-- **Response:** Plain text list of suppressed emails
 
 #### Import List
 - **POST** `/suppression/import`
@@ -356,7 +731,6 @@ Load built-in ISP presets (Gmail, Microsoft, Yahoo).
 - **DELETE** `/alerts/rules/{id}`
 
 #### Test Rule
-Fire an alert immediately for testing.
 - **POST** `/alerts/test/{id}`
 
 #### Alert Event History
@@ -367,27 +741,73 @@ Fire an alert immediately for testing.
 ## 🛡️ Email Auth Tools
 
 #### Check Domain Auth
-Run live SPF, DKIM, DMARC checks for a domain.
 - **GET** `/authtools/check/{domain}`
 
-#### Get BIMI Record
+#### BIMI Record
 - **GET** `/authtools/bimi/{domain}`
+- **POST** `/authtools/bimi/{domain}` — Body: `{ "vmc_url": "...", "logo_url": "..." }`
 
-#### Set BIMI Record
-- **POST** `/authtools/bimi/{domain}`
-- **Body:** `{ "vmc_url": "https://...", "logo_url": "https://..." }`
-
-#### Get MTA-STS Policy
+#### MTA-STS Policy
 - **GET** `/authtools/mtasts/{domain}`
-
-#### Set MTA-STS Policy
-- **POST** `/authtools/mtasts/{domain}`
-- **Body:** `{ "mode": "enforce", "mx": ["mail.example.com"], "max_age": 86400 }`
+- **POST** `/authtools/mtasts/{domain}` — Body: `{ "mode": "enforce", "mx": ["mail.example.com"], "max_age": 86400 }`
 
 ---
 
 ## 📊 Bounce Analytics
 
 #### Get Bounce Stats
-Returns parsed bounce log summary.
 - **GET** `/bounce-analytics?lines=500`
+
+---
+
+## 📋 Campaigns
+
+#### List Campaigns
+- **GET** `/campaigns`
+
+#### Create Campaign
+- **POST** `/campaigns`
+- **Body:** `{ "name": "June Newsletter", "subject": "...", "html_body": "...", "from_email": "...", "list_id": 1 }`
+
+#### Get Campaign
+- **GET** `/campaigns/{id}`
+
+#### Update Campaign
+- **PUT** `/campaigns/{id}`
+
+#### Delete Campaign
+- **DELETE** `/campaigns/{id}`
+
+#### Campaign Stats
+Per-campaign delivery counters, open rate, click rate.
+- **GET** `/campaigns/{id}/stats`
+
+#### Pause Campaign
+- **POST** `/campaigns/{id}/pause`
+
+#### Resume Campaign
+- **POST** `/campaigns/{id}/resume`
+
+#### Pre-Send Score
+Local readiness check. Returns grade A–F and per-factor breakdown.
+- **GET** `/campaigns/{id}/send-score`
+
+---
+
+## Error Responses
+
+All errors return JSON:
+```json
+{ "error": "human readable error message" }
+```
+
+Common status codes:
+| Code | Meaning |
+|---|---|
+| `200` | Success |
+| `201` | Created |
+| `400` | Bad request / invalid JSON |
+| `401` | Missing or invalid token |
+| `403` | Insufficient scope (API key) |
+| `404` | Resource not found |
+| `500` | Internal server error |

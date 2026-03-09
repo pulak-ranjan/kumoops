@@ -668,7 +668,7 @@ func (tb *TelegramBot) SendDigest(stats map[string][]DayStats) error {
 			"❌ Bounced: `%d`\n"+
 			"⏳ Deferred: `%d`\n"+
 			"%s Rate: `%.1f%%`\n\n"+
-			"_KumoMTA UI — %s_",
+			"_KumoOps — %s_",
 		time.Now().Format("02 Jan 2006"),
 		totalSent, totalDelivered, totalBounced, totalDeferred, indicator, rate,
 		settings.MainHostname,
@@ -738,7 +738,7 @@ func (tb *TelegramBot) SendDiscordDigest(stats map[string][]DayStats) error {
 			{Name: "⏳ Deferred", Value: fmt.Sprintf("`%d`", totalDeferred), Inline: true},
 			{Name: "📈 Delivery Rate", Value: fmt.Sprintf("`%.1f%%`", rate), Inline: true},
 		},
-		Footer:    discordFooter{Text: "KumoMTA UI — " + settings.MainHostname},
+		Footer:    discordFooter{Text: "KumoOps — " + settings.MainHostname},
 		Timestamp: time.Now().Format(time.RFC3339),
 	}
 
@@ -880,7 +880,7 @@ func SendDiscordAlert(webhookURL, title, body string, color int) error {
 func TestTelegramConnection(token, chatID string) error {
 	bot := &TelegramBot{}
 	return bot.SendMessage(token, chatID,
-		"✅ *KumoMTA UI connected!*\n\nYour Telegram bot is working.\n\nSend /help for all available commands.",
+		"✅ *KumoOps connected!*\n\nYour Telegram bot is working.\n\nSend /help for all available commands.",
 	)
 }
 
@@ -889,7 +889,7 @@ func TestDiscordConnection(webhookURL string) error {
 	if !strings.HasPrefix(webhookURL, "http") {
 		return fmt.Errorf("invalid URL")
 	}
-	return SendDiscordAlert(webhookURL, "✅ Connection Test", "KumoMTA UI is connected to this Discord channel.", 3066993)
+	return SendDiscordAlert(webhookURL, "✅ Connection Test", "KumoOps is connected to this Discord channel.", 3066993)
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
