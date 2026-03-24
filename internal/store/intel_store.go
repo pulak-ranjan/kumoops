@@ -35,13 +35,13 @@ func (s *Store) ListISPSnapshots(domain, isp string, since time.Time, limit int)
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
-	var snaps []models.ISPSnapshot
+	snaps := make([]models.ISPSnapshot, 0)
 	return snaps, q.Find(&snaps).Error
 }
 
 // GetLatestISPSnapshots returns the most recent snapshot per ISP for a domain.
 func (s *Store) GetLatestISPSnapshots(domain string) ([]models.ISPSnapshot, error) {
-	var snaps []models.ISPSnapshot
+	snaps := make([]models.ISPSnapshot, 0)
 	err := s.DB.Raw(`
 		SELECT * FROM isp_snapshots s
 		WHERE domain = ? AND captured_at = (
@@ -168,7 +168,7 @@ func (s *Store) GetDomainStats24h(domain string) (*models.EmailStats, error) {
 // ListSendersByDomainName returns Sender records for a given domain name string.
 // Used by ISP Intel service; distinct from ListSendersByDomain(domainID uint) in db.go.
 func (s *Store) ListSendersByDomainName(domainName string) ([]models.Sender, error) {
-	var senders []models.Sender
+	senders := make([]models.Sender, 0)
 	err := s.DB.
 		Joins("JOIN domains ON domains.id = senders.domain_id").
 		Where("domains.name = ?", domainName).
@@ -224,7 +224,7 @@ func (s *Store) ListThrottleAdjustmentLogs(isp string, since time.Time, limit in
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
-	var logs []models.ThrottleAdjustmentLog
+	logs := make([]models.ThrottleAdjustmentLog, 0)
 	return logs, q.Find(&logs).Error
 }
 
@@ -233,7 +233,7 @@ func (s *Store) ListThrottleAdjustmentLogs(isp string, since time.Time, limit in
 // ─────────────────────────────────────────────
 
 func (s *Store) ListEnabledShapingRules() ([]models.TrafficShapingRule, error) {
-	var rules []models.TrafficShapingRule
+	rules := make([]models.TrafficShapingRule, 0)
 	return rules, s.DB.Where("is_enabled = ?", true).Find(&rules).Error
 }
 
@@ -266,7 +266,7 @@ func (s *Store) GetActiveAnomaly(anomalyType, isp, domain string) (*models.Anoma
 }
 
 func (s *Store) ListActiveAnomalyEvents() ([]models.AnomalyEvent, error) {
-	var events []models.AnomalyEvent
+	events := make([]models.AnomalyEvent, 0)
 	return events, s.DB.Where("resolved_at IS NULL").Order("detected_at DESC").Find(&events).Error
 }
 
@@ -278,7 +278,7 @@ func (s *Store) ListAnomalyEvents(since time.Time, limit int) ([]models.AnomalyE
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
-	var events []models.AnomalyEvent
+	events := make([]models.AnomalyEvent, 0)
 	return events, q.Find(&events).Error
 }
 

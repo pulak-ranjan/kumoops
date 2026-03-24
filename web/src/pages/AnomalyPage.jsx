@@ -46,9 +46,9 @@ export default function AnomalyPage() {
         fetch(`${API}/anomalies?days=30&limit=100`),
         fetch(`${API}/throttle/logs?days=7&limit=100`),
       ]);
-      if (activeRes.ok) setActive(await activeRes.json());
-      if (histRes.ok) setHistory(await histRes.json());
-      if (logsRes.ok) setThrottleLogs(await logsRes.json());
+      if (activeRes.ok) setActive((await activeRes.json()) ?? []);
+      if (histRes.ok) setHistory((await histRes.json()) ?? []);
+      if (logsRes.ok) setThrottleLogs((await logsRes.json()) ?? []);
     } catch {}
     setLoading(false);
   }, []);

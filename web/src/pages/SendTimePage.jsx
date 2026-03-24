@@ -7,7 +7,7 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
 function authHeaders() {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('kumoui_token');
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 }
 

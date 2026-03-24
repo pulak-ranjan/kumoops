@@ -33,7 +33,7 @@ func (s *Store) ListFBLRecords(domain, feedbackType, senderEmail string, since t
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
-	var records []models.FBLRecord
+	records := make([]models.FBLRecord, 0)
 	return records, q.Find(&records).Error
 }
 
@@ -130,7 +130,7 @@ func (s *Store) ListBounceClassifications(domain, category string, since time.Ti
 	if limit > 0 {
 		q = q.Limit(limit)
 	}
-	var records []models.BounceClassification
+	records := make([]models.BounceClassification, 0)
 	return records, q.Find(&records).Error
 }
 
@@ -142,7 +142,7 @@ type BounceClassificationSummary struct {
 
 // GetBounceClassificationSummary returns per-category counts for a time window.
 func (s *Store) GetBounceClassificationSummary(since time.Time) ([]BounceClassificationSummary, error) {
-	var rows []BounceClassificationSummary
+	rows := make([]BounceClassificationSummary, 0)
 	err := s.DB.Raw(`
 		SELECT category, COUNT(*) as count
 		FROM bounce_classifications

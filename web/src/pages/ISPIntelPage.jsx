@@ -86,7 +86,7 @@ export default function ISPIntelPage() {
       const params = new URLSearchParams({ days, limit: 500 });
       if (domain) params.set('domain', domain);
       const res = await fetch(`${API}/isp-intel/snapshots/latest?${domain ? `domain=${domain}` : ''}`);
-      if (res.ok) setSnapshots(await res.json());
+      if (res.ok) setSnapshots((await res.json()) ?? []);
     } catch {}
     setLoading(false);
   }, [domain, days]);

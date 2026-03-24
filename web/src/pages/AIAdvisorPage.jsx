@@ -9,7 +9,7 @@ import { cn } from '../lib/utils';
 const API = '/api';
 
 function authHeaders() {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('kumoui_token');
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 }
 

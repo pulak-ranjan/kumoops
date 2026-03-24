@@ -8,7 +8,7 @@ import { cn } from '../lib/utils';
 const API = '/api';
 
 function authHeaders() {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('kumoui_token');
   return { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
 }
 
@@ -73,7 +73,7 @@ function SeedMailboxesTab() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { setMailboxes(await apiFetch('/placement/seed-mailboxes')); } catch { }
+    try { setMailboxes((await apiFetch('/placement/seed-mailboxes')) ?? []); } catch { }
     setLoading(false);
   }, []);
 

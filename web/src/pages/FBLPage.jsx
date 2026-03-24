@@ -100,10 +100,10 @@ export default function FBLPage() {
         fetch(`/api/fbl/bounces/summary?days=${days}`, { headers }),
       ]);
       if (recRes.status === 401) { window.location.href = '/login'; return; }
-      if (recRes.ok)    setRecords(await recRes.json());
-      if (statsRes.ok)  setStats(await statsRes.json());
-      if (bncRes.ok)    setBounces(await bncRes.json());
-      if (bncSumRes.ok) setBounceSummary(await bncSumRes.json());
+      if (recRes.ok)    setRecords((await recRes.json()) ?? []);
+      if (statsRes.ok)  setStats((await statsRes.json()) ?? []);
+      if (bncRes.ok)    setBounces((await bncRes.json()) ?? []);
+      if (bncSumRes.ok) setBounceSummary((await bncSumRes.json()) ?? []);
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [days]);
