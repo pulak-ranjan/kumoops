@@ -85,7 +85,7 @@ func GetSendTimeHeatmap(st *store.Store, domain string, days int) (*Heatmap, err
 		SELECT
 			CAST(strftime('%H', clicked_at) AS INTEGER) as hour_slot,
 			CAST(strftime('%w', clicked_at) AS INTEGER) as day_slot,
-			COUNT(*) as open_count
+			COUNT(*) as click_count
 		FROM campaign_recipients
 		WHERE clicked_at IS NOT NULL AND clicked_at >= ?`
 	if domain != "" {
@@ -94,9 +94,9 @@ func GetSendTimeHeatmap(st *store.Store, domain string, days int) (*Heatmap, err
 	clickQuery += ` GROUP BY hour_slot, day_slot`
 
 	var clickRows []struct {
-		HourSlot  int
-		DaySlot   int
-		OpenCount int64
+		HourSlot   int
+		DaySlot    int
+		ClickCount int64
 	}
 	qClick := st.DB.Raw(clickQuery, since)
 	if domain != "" {
@@ -119,8 +119,8 @@ func GetSendTimeHeatmap(st *store.Store, domain string, days int) (*Heatmap, err
 	}
 	for _, r := range clickRows {
 		if r.HourSlot >= 0 && r.HourSlot < 24 && r.DaySlot >= 0 && r.DaySlot < 7 {
-			grid[[2]int{r.DaySlot, r.HourSlot}].Clicks += r.OpenCount
-			grid[[2]int{r.DaySlot, r.HourSlot}].Total += r.OpenCount
+			grid[[2]int{r.DaySlot, r.HourSlot}].Clicks += r.ClickCount
+			grid[[2]int{r.DaySlot, r.HourSlot}].Total += r.ClickCount
 		}
 	}
 

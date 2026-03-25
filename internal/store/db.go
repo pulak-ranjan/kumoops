@@ -910,10 +910,17 @@ func (s *Store) SaveReputationCheck(rc *models.ReputationCheck) error {
 	return s.DB.Create(rc).Error
 }
 
-// GetLatestReputationChecks returns the most recent check for every target.
+// GetLatestReputationChecks returns the most recent check for every target (one row per target).
 func (s *Store) GetLatestReputationChecks() ([]models.ReputationCheck, error) {
-	var rows []models.ReputationCheck
-	err := s.DB.Order("checked_at desc").Find(&rows).Error
+	rows := make([]models.ReputationCheck, 0)
+	err := s.DB.Raw(`
+		SELECT * FROM reputation_checks r
+		WHERE checked_at = (
+			SELECT MAX(checked_at) FROM reputation_checks
+			WHERE target = r.target
+		)
+		ORDER BY target_type, target
+	`).Scan(&rows).Error
 	return rows, err
 }
 

@@ -174,7 +174,7 @@ func (s *Store) UpsertVERPConfig(cfg *models.VERPConfig) error {
 }
 
 func (s *Store) ListVERPConfigs() ([]models.VERPConfig, error) {
-	var configs []models.VERPConfig
+	configs := make([]models.VERPConfig, 0)
 	return configs, s.DB.Find(&configs).Error
 }
 
@@ -184,7 +184,7 @@ func (s *Store) ListVERPConfigs() ([]models.VERPConfig, error) {
 
 // ListSendersByEmail returns Sender records whose Email field matches exactly.
 func (s *Store) ListSendersByEmail(email string) ([]models.Sender, error) {
-	var senders []models.Sender
+	senders := make([]models.Sender, 0)
 	err := s.DB.Where("email = ?", email).Find(&senders).Error
 	return senders, err
 }

@@ -98,14 +98,43 @@ export default function ReputationPage() {
   };
 
   useEffect(() => {
-    fetchRows();
-    // check if a scan is already running
+    // Fetch cached data first, then auto-trigger a fresh DNS check if data is stale (>6h)
+    fetch('/api/reputation', { headers: hdrs() })
+      .then(r => r.json())
+      .then(data => {
+        const arr = Array.isArray(data) ? data : [];
+        setRows(arr);
+        setLastUpdated(new Date());
+
+        // Auto-run a fresh check if no data, or oldest checked_at > 6 hours ago
+        const SIX_HOURS = 6 * 60 * 60 * 1000;
+        const oldest = arr.reduce((min, r) => {
+          const t = r.checked_at ? new Date(r.checked_at).getTime() : 0;
+          return t < min ? t : min;
+        }, Date.now());
+        if (arr.length === 0 || (Date.now() - oldest) > SIX_HOURS) {
+          fetch('/api/reputation/check', { method: 'POST', headers: hdrs() })
+            .then(r => r.json())
+            .then(({ status }) => {
+              if (status === 'started' || status === 'already_running') {
+                setRunning(true);
+                if (!pollRef.current) {
+                  pollRef.current = setInterval(pollStatus, 3000);
+                }
+              }
+            })
+            .catch(() => {});
+        }
+      })
+      .catch(() => {});
+
+    // Also check if a scan is already running from a previous trigger
     fetch('/api/reputation/status', { headers: hdrs() })
       .then(r => r.json())
       .then(({ running: r }) => {
         if (r) {
           setRunning(true);
-          pollRef.current = setInterval(pollStatus, 3000);
+          if (!pollRef.current) pollRef.current = setInterval(pollStatus, 3000);
         }
       })
       .catch(() => {});
@@ -133,11 +162,19 @@ export default function ReputationPage() {
             <p className="text-muted-foreground text-sm">
               Blacklist checks for all sending IPs and domains.
             </p>
-            {lastUpdated && (
-              <span className="text-xs text-muted-foreground opacity-60 ml-1">
-                · Updated {lastUpdated.toLocaleTimeString()}
-              </span>
-            )}
+            {rows.length > 0 && (() => {
+              const oldest = rows.reduce((min, r) => {
+                const t = r.checked_at ? new Date(r.checked_at).getTime() : 0;
+                return t < min ? t : min;
+              }, Date.now());
+              const ageH = Math.round((Date.now() - oldest) / 3600000);
+              return (
+                <span className={cn('text-xs ml-1', ageH >= 6 ? 'text-amber-500' : 'text-muted-foreground opacity-60')}>
+                  · DNS check {ageH < 1 ? 'just now' : `${ageH}h ago`}
+                  {ageH >= 6 && ' — refreshing…'}
+                </span>
+              );
+            })()}
           </div>
         </div>
         <button
