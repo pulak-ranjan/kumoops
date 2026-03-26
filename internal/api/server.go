@@ -127,6 +127,9 @@ func (s *Server) routes() chi.Router {
 		r.Post("/api/bounces", s.handleSaveBounceAccount)
 		r.Delete("/api/bounces/{bounceID}", s.handleDeleteBounceAccount)
 		r.Post("/api/bounces/apply", s.handleApplyBounceAccounts)
+		r.Post("/api/bounces/create-required", s.handleCreateRequiredInboxes)
+		r.Get("/api/bounces/{id}/messages", s.handleListMailboxMessages)
+		r.Get("/api/bounces/{id}/messages/{msgid}", s.handleGetMailboxMessage)
 		r.Get("/api/bounce-analytics", s.handleBounceAnalytics)
 
 		// System IPs
@@ -193,6 +196,7 @@ func (s *Server) routes() chi.Router {
 		r.Post("/api/system/check-security", s.handleCheckSecurity)
 		r.Post("/api/system/action/block-ip", s.handleBlockIP)
 		r.Post("/api/tools/send-test", s.handleSendTestEmail)
+		r.Post("/api/system/run-command", s.handleRunCommand)
 
 		// AI Chat & Analysis
 		r.Post("/api/system/ai-analyze", s.handleAIAnalyze)

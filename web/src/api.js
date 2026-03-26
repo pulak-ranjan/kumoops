@@ -27,6 +27,11 @@ export async function apiRequest(path, options = {}) {
     data = { raw: text };
   }
 
+  if (res.status === 401) {
+    window.location.href = "/login";
+    throw new Error("Session expired");
+  }
+
   if (!res.ok) {
     const msg = data.error || res.statusText || "Request failed";
     throw new Error(msg);
@@ -185,6 +190,7 @@ export function importSenders(file) {
     },
     body: formData
   }).then(async (res) => {
+    if (res.status === 401) { window.location.href = "/login"; throw new Error("Session expired"); }
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "Import failed");
     return data;

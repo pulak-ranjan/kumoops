@@ -15,7 +15,12 @@ function authHeaders() {
 
 async function apiFetch(path, opts = {}) {
   const r = await fetch(API + path, { headers: authHeaders(), ...opts });
-  if (!r.ok) throw new Error(await r.text());
+  if (r.status === 401) { window.location.href = '/login'; return null; }
+  if (!r.ok) {
+    const body = await r.text();
+    let msg; try { msg = JSON.parse(body).error || body; } catch { msg = body; }
+    throw new Error(msg);
+  }
   return r.json();
 }
 

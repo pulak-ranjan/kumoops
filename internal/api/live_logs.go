@@ -1,6 +1,7 @@
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 )
 
 // GET /api/logs/stream?service=kumomta
@@ -115,13 +117,74 @@ func latestLogFiles(dir string) []string {
 		}
 	}
 	sort.Slice(infos, func(i, j int) bool { return infos[i].modTime > infos[j].modTime })
-	// Return up to 3 most recent files
+	// Return up to 3 most recent NON-compressed files
 	result := make([]string, 0, 3)
-	for i, f := range infos {
-		if i >= 3 {
-			break
+	for _, f := range infos {
+		if strings.HasSuffix(f.path, ".gz") || strings.HasSuffix(f.path, ".bz2") || strings.HasSuffix(f.path, ".xz") || strings.HasSuffix(f.path, ".zst") {
+			continue // skip compressed rotated logs
 		}
 		result = append(result, f.path)
+		if len(result) >= 3 {
+			break
+		}
 	}
 	return result
+}
+
+// safeCommands maps a short command key to the actual exec args.
+// All commands are read-only and non-privileged.
+var safeCommands = map[string][]string{
+	"ps":          {"ps", "aux", "--sort=-%cpu"},
+	"df":          {"df", "-h"},
+	"free":        {"free", "-h"},
+	"uptime":      {"uptime"},
+	"who":         {"who"},
+	"ss":          {"ss", "-tlnp"},
+	"netstat":     {"netstat", "-tlnp"},
+	"last":        {"last", "-n", "20"},
+	"top1":        {"top", "-b", "-n", "1", "-o", "%CPU"},
+	"iostat":      {"iostat", "-x", "1", "1"},
+	"vmstat":      {"vmstat", "-s"},
+	"lsof-ports":  {"lsof", "-i", "-P", "-n"},
+	"svc-kumomta": {"systemctl", "status", "kumomta", "--no-pager", "-l"},
+	"svc-dovecot": {"systemctl", "status", "dovecot", "--no-pager", "-l"},
+	"svc-postfix": {"systemctl", "status", "postfix", "--no-pager", "-l"},
+	"svc-fail2ban":{"systemctl", "status", "fail2ban", "--no-pager", "-l"},
+	"journal-kumo":{"journalctl", "-u", "kumomta", "-n", "100", "--no-pager", "--output=short-iso"},
+	"journal-dove":{"journalctl", "-u", "dovecot", "-n", "100", "--no-pager", "--output=short-iso"},
+	"journal-f2b": {"journalctl", "-u", "fail2ban", "-n", "100", "--no-pager", "--output=short-iso"},
+	"dmesg":       {"dmesg", "-T", "--level=err,warn", "-n", "50"},
+}
+
+// POST /api/system/run-command
+// Runs a whitelisted read-only system command and returns output.
+// Body: {"cmd": "ps"}
+func (s *Server) handleRunCommand(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Cmd string `json:"cmd"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid json"})
+		return
+	}
+
+	args, ok := safeCommands[req.Cmd]
+	if !ok {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "command not in allowlist"})
+		return
+	}
+
+	ctx := r.Context()
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
+	out, err := cmd.CombinedOutput()
+
+	resp := map[string]interface{}{
+		"cmd":    req.Cmd,
+		"output": string(out),
+		"ran_at": time.Now().Format(time.RFC3339),
+	}
+	if err != nil {
+		resp["warning"] = err.Error() // non-zero exit is common for some commands, still return output
+	}
+	writeJSON(w, http.StatusOK, resp)
 }

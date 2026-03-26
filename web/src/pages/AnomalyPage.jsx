@@ -6,6 +6,8 @@ import {
 import { cn } from '../lib/utils';
 
 const API = '/api';
+const hdrs = () => ({ Authorization: `Bearer ${localStorage.getItem('kumoui_token') || ''}`, 'Content-Type': 'application/json' });
+function check401(res) { if (res.status === 401) { window.location.href = '/login'; return true; } return false; }
 
 const ANOMALY_TYPE_META = {
   bounce_spike:     { label: 'Bounce Spike',     icon: TrendingDown, color: 'text-red-600 dark:text-red-400',     bg: 'bg-red-50 dark:bg-red-900/20' },
@@ -42,10 +44,11 @@ export default function AnomalyPage() {
     setLoading(true);
     try {
       const [activeRes, histRes, logsRes] = await Promise.all([
-        fetch(`${API}/anomalies/active`),
-        fetch(`${API}/anomalies?days=30&limit=100`),
-        fetch(`${API}/throttle/logs?days=7&limit=100`),
+        fetch(`${API}/anomalies/active`, { headers: hdrs() }),
+        fetch(`${API}/anomalies?days=30&limit=100`, { headers: hdrs() }),
+        fetch(`${API}/throttle/logs?days=7&limit=100`, { headers: hdrs() }),
       ]);
+      if (check401(activeRes)) return;
       if (activeRes.ok) setActive((await activeRes.json()) ?? []);
       if (histRes.ok) setHistory((await histRes.json()) ?? []);
       if (logsRes.ok) setThrottleLogs((await logsRes.json()) ?? []);
@@ -58,7 +61,7 @@ export default function AnomalyPage() {
   const resolveAnomaly = async (id) => {
     setResolving(id);
     try {
-      await fetch(`${API}/anomalies/${id}/resolve`, { method: 'POST' });
+      await fetch(`${API}/anomalies/${id}/resolve`, { method: 'POST', headers: hdrs() });
       await load();
     } catch {}
     setResolving(null);
@@ -67,7 +70,7 @@ export default function AnomalyPage() {
   const runThrottle = async () => {
     setRunningThrottle(true);
     try {
-      await fetch(`${API}/throttle/run`, { method: 'POST' });
+      await fetch(`${API}/throttle/run`, { method: 'POST', headers: hdrs() });
       setTimeout(() => { load(); setRunningThrottle(false); }, 2000);
     } catch { setRunningThrottle(false); }
   };

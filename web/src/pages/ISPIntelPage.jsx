@@ -6,6 +6,8 @@ import {
 import { cn } from '../lib/utils';
 
 const API = '/api';
+const hdrs = () => ({ Authorization: `Bearer ${localStorage.getItem('kumoui_token') || ''}`, 'Content-Type': 'application/json' });
+function check401(res) { if (res.status === 401) { window.location.href = '/login'; return true; } return false; }
 
 const ISP_COLORS = {
   Gmail:   { bg: 'bg-red-100 dark:bg-red-900/30',    text: 'text-red-700 dark:text-red-400',    dot: 'bg-red-500' },
@@ -85,7 +87,8 @@ export default function ISPIntelPage() {
     try {
       const params = new URLSearchParams({ days, limit: 500 });
       if (domain) params.set('domain', domain);
-      const res = await fetch(`${API}/isp-intel/snapshots/latest?${domain ? `domain=${domain}` : ''}`);
+      const res = await fetch(`${API}/isp-intel/snapshots/latest?${domain ? `domain=${domain}` : ''}`, { headers: hdrs() });
+      if (check401(res)) return;
       if (res.ok) setSnapshots((await res.json()) ?? []);
     } catch {}
     setLoading(false);
@@ -96,7 +99,7 @@ export default function ISPIntelPage() {
   const triggerRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetch(`${API}/isp-intel/refresh`, { method: 'POST' });
+      await fetch(`${API}/isp-intel/refresh`, { method: 'POST', headers: hdrs() });
       setTimeout(() => { load(); setRefreshing(false); }, 3000);
     } catch { setRefreshing(false); }
   };

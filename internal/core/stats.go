@@ -43,6 +43,9 @@ const KumoLogDir = "/var/log/kumomta"
 // --- FILE HELPERS ---
 
 // openLogFile intelligently handles both Zstd compressed logs and plain JSON logs
+// OpenLogFile is the exported version for use outside the core package.
+func OpenLogFile(path string) (io.ReadCloser, error) { return openLogFile(path) }
+
 func openLogFile(path string) (io.ReadCloser, error) {
 	f, err := os.Open(path)
 	if err != nil {

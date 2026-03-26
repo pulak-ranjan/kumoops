@@ -141,6 +141,14 @@ export default function ReputationPage() {
     return () => clearInterval(pollRef.current);
   }, [fetchRows, pollStatus]);
 
+  const [ispSnaps, setIspSnaps] = useState([]);
+  useEffect(() => {
+    fetch('/api/isp-intel/snapshots/latest?domain=', { headers: hdrs() })
+      .then(r => r.ok ? r.json() : [])
+      .then(d => setIspSnaps(Array.isArray(d) ? d : []))
+      .catch(() => {});
+  }, []);
+
   const visible = rows.filter(r => {
     if (filter !== 'all' && r.target_type !== filter) return false;
     if (statusFilter !== 'all' && r.status !== statusFilter) return false;
@@ -317,6 +325,57 @@ export default function ReputationPage() {
           )}
         </div>
       </div>
+
+      {/* Google Postmaster / ISP Sender Reputation */}
+      {ispSnaps.length > 0 && (
+        <div className="bg-card border rounded-xl shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b bg-muted/30">
+            <h3 className="text-sm font-semibold">Google Postmaster Domain Reputation</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">Live sender reputation data from Google Postmaster Tools via ISP Intel.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/50 text-muted-foreground uppercase text-xs">
+                <tr>
+                  {['Domain', 'ISP', 'Domain Rep', 'IP Rep', 'Spam Rate', 'Delivery Error', 'Last Seen'].map(h => (
+                    <th key={h} className="px-4 py-2.5 font-medium">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {ispSnaps.map(snap => {
+                  const repColor = (r) => {
+                    if (!r || r === 'UNKNOWN') return 'text-muted-foreground';
+                    if (r === 'HIGH') return 'text-green-600 dark:text-green-400 font-semibold';
+                    if (r === 'MEDIUM') return 'text-yellow-600 dark:text-yellow-400 font-semibold';
+                    if (r === 'LOW') return 'text-orange-600 dark:text-orange-400 font-semibold';
+                    return 'text-red-600 dark:text-red-400 font-bold'; // BAD
+                  };
+                  return (
+                    <tr key={snap.id} className="hover:bg-muted/40 transition-colors">
+                      <td className="px-4 py-3 font-mono text-xs">{snap.domain}</td>
+                      <td className="px-4 py-3 text-xs">{snap.isp}</td>
+                      <td className={cn('px-4 py-3 text-xs', repColor(snap.gpt_domain_reputation))}>
+                        {snap.gpt_domain_reputation || '—'}
+                      </td>
+                      <td className={cn('px-4 py-3 text-xs', repColor(snap.gpt_ip_reputation))}>
+                        {snap.gpt_ip_reputation || '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {snap.gpt_spam_rate != null ? `${(snap.gpt_spam_rate * 100).toFixed(3)}%` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs">
+                        {snap.gpt_delivery_error_rate != null ? `${(snap.gpt_delivery_error_rate * 100).toFixed(2)}%` : '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{fmt(snap.captured_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* RBL reference */}
       <div className="bg-card border rounded-xl p-5 shadow-sm">

@@ -327,6 +327,12 @@ func (s *Store) DeleteBounceAccount(id uint) error {
 	return s.DB.Delete(&models.BounceAccount{}, id).Error
 }
 
+func (s *Store) ListBounceAccountsByUsername(username string) ([]models.BounceAccount, error) {
+	var list []models.BounceAccount
+	err := s.DB.Where("username = ?", username).Find(&list).Error
+	return list, err
+}
+
 // ----------------------
 // System IPs
 // ----------------------

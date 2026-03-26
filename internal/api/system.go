@@ -1,16 +1,13 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/pulak-ranjan/kumoops/internal/core"
 )
@@ -204,7 +201,15 @@ func (s *Server) handleBlockIP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		// 2. Check Relay IPs (MailWizz)
-		if strings.Contains(settings.MailWizzIP, ip) {
+		relayIPs := strings.Split(settings.MailWizzIP, ",")
+		isRelayIP := false
+		for _, rip := range relayIPs {
+			if strings.TrimSpace(rip) == ip {
+				isRelayIP = true
+				break
+			}
+		}
+		if isRelayIP {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "SAFETY: Cannot block a configured Relay IP."})
 			return
 		}
@@ -280,7 +285,10 @@ func (s *Server) handleAIAnalyze(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	analysis, err := callAIAPI(settings.AIProvider, aiKey, prompt, context)
+	analysis, err := s.sendToAI(settings, aiKey, []ChatMessage{
+		{Role: "system", Content: "You are a KumoMTA server expert assistant."},
+		{Role: "user", Content: prompt + "\n\nData:\n" + context},
+	})
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "AI Provider Error: " + err.Error()})
 		return
@@ -289,58 +297,3 @@ func (s *Server) handleAIAnalyze(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]string{"analysis": analysis, "type": req.Type})
 }
 
-func callAIAPI(provider, apiKey, prompt, context string) (string, error) {
-	url := "https://api.openai.com/v1/chat/completions"
-	model := "gpt-3.5-turbo"
-	
-	if provider == "deepseek" {
-		url = "https://api.deepseek.com/chat/completions"
-		model = "deepseek-chat"
-	}
-
-	// Truncate context to avoid token limits
-	if len(context) > 2000 {
-		context = context[len(context)-2000:]
-	}
-
-	reqBody := map[string]interface{}{
-		"model": model,
-		"messages": []map[string]string{
-			{"role": "system", "content": "You are a KumoMTA server expert assistant."},
-			{"role": "user", "content": prompt + "\n\nData:\n" + context},
-		},
-		"max_tokens": 500,
-	}
-
-	jsonBody, _ := json.Marshal(reqBody)
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(jsonBody))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("API error (%d): %s", resp.StatusCode, string(body))
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", err
-	}
-	
-	choices, _ := result["choices"].([]interface{})
-	if len(choices) > 0 {
-		if c, ok := choices[0].(map[string]interface{}); ok {
-			if m, ok := c["message"].(map[string]interface{}); ok {
-				return m["content"].(string), nil
-			}
-		}
-	}
-	return "", fmt.Errorf("no content returned from AI")
-}
