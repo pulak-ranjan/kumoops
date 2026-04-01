@@ -141,6 +141,7 @@ export default function TrafficShapingPage() {
           headers,
           body: JSON.stringify(payload),
         });
+        if (res.status === 401) { window.location.href = '/login'; return; }
         if (!res.ok) throw new Error('Failed to update rule');
       } else {
         const res = await fetch('/api/shaping', {
@@ -148,6 +149,7 @@ export default function TrafficShapingPage() {
           headers,
           body: JSON.stringify(payload),
         });
+        if (res.status === 401) { window.location.href = '/login'; return; }
         if (!res.ok) throw new Error('Failed to create rule');
       }
 
@@ -167,6 +169,7 @@ export default function TrafficShapingPage() {
         headers,
         body: JSON.stringify({ ...rule, is_enabled: !rule.is_enabled }),
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Failed to toggle rule');
       fetchRules();
     } catch (e) {
@@ -178,6 +181,7 @@ export default function TrafficShapingPage() {
     if (!confirm(`Delete rule for "${rule.provider}"? This cannot be undone.`)) return;
     try {
       const res = await fetch(`/api/shaping/${rule.id}`, { method: 'DELETE', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Failed to delete rule');
       fetchRules();
     } catch (e) {
@@ -190,6 +194,7 @@ export default function TrafficShapingPage() {
     setSeeding(true);
     try {
       const res = await fetch('/api/shaping/seed', { method: 'POST', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Failed to seed defaults');
       fetchRules();
     } catch (e) {

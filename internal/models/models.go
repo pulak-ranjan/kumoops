@@ -518,18 +518,23 @@ type IPPoolMember struct {
 	IPValue string `json:"ip_value"` // e.g. "192.168.1.10"
 }
 
-// DeliveryEvent stores per-recipient failure events parsed from KumoMTA logs.
-// Only Bounce and TransientFailure events are stored (not every delivery).
+// DeliveryEvent stores per-recipient events parsed from KumoMTA logs.
 type DeliveryEvent struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
-	Timestamp time.Time `gorm:"index" json:"timestamp"`
-	EventType string    `gorm:"index" json:"event_type"` // "Bounce" or "TransientFailure"
-	Sender    string    `gorm:"index" json:"sender"`
-	Recipient string    `gorm:"index" json:"recipient"`
-	Domain    string    `gorm:"index" json:"domain"`   // extracted from recipient
-	ErrorCode int       `json:"error_code"`             // SMTP code e.g. 550, 421
-	ErrorMsg  string    `json:"error_msg"`              // full SMTP response message
-	Provider  string    `gorm:"index" json:"provider"`  // "Gmail", "Outlook", "Yahoo", etc.
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	Timestamp   time.Time `gorm:"index" json:"timestamp"`
+	EventType   string    `gorm:"index" json:"event_type"` // Bounce, TransientFailure, Delivery, Expiration, OOB
+	Sender      string    `gorm:"index" json:"sender"`
+	Recipient   string    `gorm:"index" json:"recipient"`
+	Domain      string    `gorm:"index" json:"domain"`          // extracted from recipient
+	ErrorCode   int       `json:"error_code"`                    // SMTP code e.g. 550, 421, 250
+	ErrorMsg    string    `json:"error_msg"`                     // full SMTP response message
+	Provider    string    `gorm:"index" json:"provider"`         // Gmail, Outlook, Yahoo, etc.
+	Site        string    `json:"site"`                          // MX hostname
+	Queue       string    `json:"queue"`                         // queue name
+	EgressPool  string    `json:"egress_pool"`                   // IP pool used
+	EgressSrc   string    `json:"egress_source"`                 // source IP within pool
+	NumAttempts int       `json:"num_attempts"`                  // retry count
+	BounceClass string   `json:"bounce_classification"`          // KumoMTA bounce classifier
 }
 
 // FBLRecord stores a parsed Feedback Loop (ARF/RFC 5965) complaint received

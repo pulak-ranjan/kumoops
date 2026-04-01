@@ -99,11 +99,11 @@ export default function FBLPage() {
         fetch(`/api/fbl/bounces?days=${days}&limit=200`, { headers }),
         fetch(`/api/fbl/bounces/summary?days=${days}`, { headers }),
       ]);
-      if (recRes.status === 401) { window.location.href = '/login'; return; }
-      if (recRes.ok)    setRecords((await recRes.json()) ?? []);
-      if (statsRes.ok)  setStats((await statsRes.json()) ?? []);
-      if (bncRes.ok)    setBounces((await bncRes.json()) ?? []);
-      if (bncSumRes.ok) setBounceSummary((await bncSumRes.json()) ?? []);
+      if ([recRes, statsRes, bncRes, bncSumRes].some(r => r.status === 401)) { window.location.href = '/login'; return; }
+      if (recRes.ok)    { const d = await recRes.json();    setRecords(Array.isArray(d) ? d : []); }
+      if (statsRes.ok)  { const d = await statsRes.json();  setStats(Array.isArray(d) ? d : []); }
+      if (bncRes.ok)    { const d = await bncRes.json();    setBounces(Array.isArray(d) ? d : []); }
+      if (bncSumRes.ok) { const d = await bncSumRes.json(); setBounceSummary(Array.isArray(d) ? d : []); }
     } catch (e) { console.error(e); }
     setLoading(false);
   }, [days]);
@@ -112,8 +112,11 @@ export default function FBLPage() {
 
   const deleteRecord = async (id) => {
     if (!confirm('Delete this FBL record?')) return;
-    await fetch(`/api/fbl/${id}`, { method: 'DELETE', headers });
-    setRecords(r => r.filter(x => x.id !== id));
+    try {
+      const res = await fetch(`/api/fbl/${id}`, { method: 'DELETE', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      setRecords(r => r.filter(x => x.id !== id));
+    } catch (e) { console.error(e); }
   };
 
   const uploadFile = async (e, type) => {
@@ -126,6 +129,7 @@ export default function FBLPage() {
     const endpoint = type === 'fbl' ? '/api/fbl/upload' : '/api/fbl/upload-dsn';
     try {
       const res = await fetch(endpoint, { method: 'POST', headers, body: form });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       if (res.ok) {
         setUploadMsg(`✓ Processed successfully. ID: ${data.id}`);

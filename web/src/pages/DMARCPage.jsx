@@ -43,6 +43,7 @@ export default function DMARCPage() {
     setLoadingDNS(true);
     try {
       const res = await fetch(`/api/dns/${id}`, { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) setDnsData(await res.json());
     } catch (e) { console.error(e); }
     setLoadingDNS(false);
@@ -54,7 +55,8 @@ export default function DMARCPage() {
     setSaving(true);
     try {
       const res = await fetch(`/api/dmarc/${selected.id}`, { method: 'POST', headers, body: JSON.stringify(dmarc) });
-      if (res.ok) { 
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      if (res.ok) {
         setMessage('DMARC record updated'); 
         loadDNS(selected.id);
         fetchDomains(); 

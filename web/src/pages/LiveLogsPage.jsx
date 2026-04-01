@@ -142,6 +142,7 @@ export default function LiveLogsPage() {
         method: 'POST', headers: hdrs(),
         body: JSON.stringify({ cmd: cmdId }),
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       if (!res.ok) { setCmdOutput(`Error: ${data.error}`); return; }
       setCmdOutput(data.output || '(no output)');

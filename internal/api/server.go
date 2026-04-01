@@ -190,6 +190,7 @@ func (s *Server) routes() chi.Router {
 		r.Get("/api/reputation", s.handleGetReputation)
 		r.Post("/api/reputation/check", s.handleRunReputationCheck)
 		r.Get("/api/reputation/status", s.handleReputationStatus)
+		r.Get("/api/reputation/delist-urls", s.handleDelistURLs)
 
 		// System Tools & Actions (Guardian)
 		r.Post("/api/system/check-blacklist", s.handleCheckBlacklist)

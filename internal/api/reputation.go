@@ -44,3 +44,9 @@ func (s *Server) handleReputationStatus(w http.ResponseWriter, r *http.Request) 
 	running := atomic.LoadInt32(&checkInProgress) == 1
 	writeJSON(w, http.StatusOK, map[string]bool{"running": running})
 }
+
+// GET /api/reputation/delist-urls
+// Returns the delist URL for each RBL zone.
+func (s *Server) handleDelistURLs(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, core.DelistURLs)
+}

@@ -107,6 +107,7 @@ export default function SuppressionPage() {
     if (!confirm('Remove this email from the suppression list?')) return;
     try {
       const res = await fetch(`/api/suppression/${id}`, { method: 'DELETE', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Delete failed');
       showToast('success', 'Email removed from suppression list.');
       fetchItems(page, search);
@@ -121,6 +122,7 @@ export default function SuppressionPage() {
     setCheckResult(null);
     try {
       const res = await fetch(`/api/suppression/check?email=${encodeURIComponent(checkEmail.trim())}`, { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Check failed');
       const data = await res.json();
       setCheckResult(data);
@@ -133,6 +135,7 @@ export default function SuppressionPage() {
   const exportCSV = async () => {
     try {
       const res = await fetch('/api/suppression/export', { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Export failed');
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);

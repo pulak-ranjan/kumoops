@@ -12,7 +12,11 @@ import (
 
 // GET /api/campaigns/{id}/ab-summary
 func (s *Server) handleGetABSummary(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	id, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid campaign ID"})
+		return
+	}
 	summary, err := core.GetABTestSummary(s.Store, uint(id))
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
@@ -23,7 +27,11 @@ func (s *Server) handleGetABSummary(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/campaigns/{id}/variants
 func (s *Server) handleListVariants(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	id, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid campaign ID"})
+		return
+	}
 	vs, err := s.Store.ListCampaignVariants(uint(id))
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
@@ -34,7 +42,11 @@ func (s *Server) handleListVariants(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/campaigns/{id}/variants
 func (s *Server) handleCreateVariant(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	id, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid campaign ID"})
+		return
+	}
 	var v models.CampaignVariant
 	if err := json.NewDecoder(r.Body).Decode(&v); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid JSON"})
@@ -54,7 +66,11 @@ func (s *Server) handleCreateVariant(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/campaigns/{id}/variants/{vid}
 func (s *Server) handleDeleteVariant(w http.ResponseWriter, r *http.Request) {
-	vid, _ := strconv.ParseUint(chi.URLParam(r, "vid"), 10, 64)
+	vid, err := strconv.ParseUint(chi.URLParam(r, "vid"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid variant ID"})
+		return
+	}
 	if err := s.Store.DeleteCampaignVariant(uint(vid)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -64,8 +80,16 @@ func (s *Server) handleDeleteVariant(w http.ResponseWriter, r *http.Request) {
 
 // POST /api/campaigns/{id}/variants/{vid}/set-winner — manual winner selection
 func (s *Server) handleSetABWinner(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
-	vid, _ := strconv.ParseUint(chi.URLParam(r, "vid"), 10, 64)
+	id, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid campaign ID"})
+		return
+	}
+	vid, err := strconv.ParseUint(chi.URLParam(r, "vid"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid variant ID"})
+		return
+	}
 	if err := s.Store.SetABWinner(uint(id), uint(vid)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return

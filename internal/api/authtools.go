@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strings"
 
@@ -81,7 +82,7 @@ func (s *Server) handleGetMTASTS(w http.ResponseWriter, r *http.Request) {
 			"is_enabled":  false,
 			"mode":        "testing",
 			"max_age":     86400,
-			"mx_hosts":    "",
+			"mx_hosts":    []string{},
 			"policy_file": "",
 			"dns_record":  "",
 		})
@@ -98,7 +99,7 @@ func (s *Server) handleGetMTASTS(w http.ResponseWriter, r *http.Request) {
 		"is_enabled":  p.IsEnabled,
 		"mode":        p.Mode,
 		"max_age":     p.MaxAge,
-		"mx_hosts":    p.MXHosts,
+		"mx_hosts":    splitMXHosts(p.MXHosts),
 		"policy_file": buildMTASTSPolicyFile(p),
 		"dns_record":  buildMTASTSDNSRecord(p),
 	})
@@ -129,48 +130,135 @@ func (s *Server) handleSetMTASTS(w http.ResponseWriter, r *http.Request) {
 		"is_enabled":  req.IsEnabled,
 		"mode":        req.Mode,
 		"max_age":     req.MaxAge,
-		"mx_hosts":    req.MXHosts,
+		"mx_hosts":    splitMXHosts(req.MXHosts),
 		"policy_file": buildMTASTSPolicyFile(&req),
 		"dns_record":  buildMTASTSDNSRecord(&req),
 	})
 }
 
 // GET /api/authtools/check/{domain}
-// Returns a comprehensive auth health check for the domain
+// Returns a comprehensive auth health check for the domain with real DNS lookups
 func (s *Server) handleCheckAuthTools(w http.ResponseWriter, r *http.Request) {
 	domain := chi.URLParam(r, "domain")
 
-	bimiEnabled := false
-	bimiLogoURL := ""
-	if b, err := s.Store.GetBIMI(domain); err == nil {
-		bimiEnabled = b.IsEnabled
-		bimiLogoURL = b.LogoURL
+	// SPF — look for TXT record containing "v=spf1"
+	spfConfigured := false
+	spfDesc := "No SPF record found"
+	if txts, err := net.LookupTXT(domain); err == nil {
+		for _, txt := range txts {
+			if strings.HasPrefix(strings.ToLower(txt), "v=spf1") {
+				spfConfigured = true
+				spfDesc = txt
+				break
+			}
+		}
 	}
 
+	// DKIM — check common selectors
+	dkimConfigured := false
+	dkimDesc := "No DKIM record found (checked default, google, s1)"
+	for _, sel := range []string{"default", "google", "s1", "s2", "k1", "k2", "dkim", "mail"} {
+		dkimHost := sel + "._domainkey." + domain
+		if txts, err := net.LookupTXT(dkimHost); err == nil {
+			for _, txt := range txts {
+				if strings.Contains(strings.ToLower(txt), "v=dkim1") || strings.Contains(txt, "p=") {
+					dkimConfigured = true
+					dkimDesc = fmt.Sprintf("Found: %s._domainkey", sel)
+					break
+				}
+			}
+		}
+		if dkimConfigured {
+			break
+		}
+		// Also check CNAME (KumoMTA uses CNAME for DKIM)
+		if cname, err := net.LookupCNAME(dkimHost); err == nil && cname != "" && cname != dkimHost+"." {
+			dkimConfigured = true
+			dkimDesc = fmt.Sprintf("CNAME: %s._domainkey → %s", sel, cname)
+			break
+		}
+	}
+
+	// DMARC — look for TXT at _dmarc.domain
+	dmarcConfigured := false
+	dmarcDesc := "No DMARC record found"
+	if txts, err := net.LookupTXT("_dmarc." + domain); err == nil {
+		for _, txt := range txts {
+			if strings.HasPrefix(strings.ToLower(txt), "v=dmarc1") {
+				dmarcConfigured = true
+				dmarcDesc = txt
+				break
+			}
+		}
+	}
+
+	// TLS-RPT — look for TXT at _smtp._tls.domain
+	tlsrptConfigured := false
+	tlsrptDesc := "No TLS-RPT record found"
+	if txts, err := net.LookupTXT("_smtp._tls." + domain); err == nil {
+		for _, txt := range txts {
+			if strings.Contains(strings.ToLower(txt), "v=tlsrptv1") {
+				tlsrptConfigured = true
+				tlsrptDesc = txt
+				break
+			}
+		}
+	}
+
+	// BIMI — check DB config + DNS
+	bimiEnabled := false
+	bimiDesc := "Not configured"
+	if b, err := s.Store.GetBIMI(domain); err == nil && b.IsEnabled {
+		bimiEnabled = true
+		bimiDesc = "Configured: " + b.LogoURL
+	}
+	if txts, err := net.LookupTXT("default._bimi." + domain); err == nil {
+		for _, txt := range txts {
+			if strings.Contains(strings.ToLower(txt), "v=bimi1") {
+				bimiEnabled = true
+				bimiDesc = txt
+				break
+			}
+		}
+	}
+
+	// MTA-STS — check DB config + DNS
 	mtastsEnabled := false
+	mtastsDesc := "Not configured"
 	mtastsMode := ""
-	if p, err := s.Store.GetMTASTS(domain); err == nil {
-		mtastsEnabled = p.IsEnabled
+	if p, err := s.Store.GetMTASTS(domain); err == nil && p.IsEnabled {
+		mtastsEnabled = true
 		mtastsMode = p.Mode
+		mtastsDesc = fmt.Sprintf("Mode: %s", p.Mode)
+	}
+	if txts, err := net.LookupTXT("_mta-sts." + domain); err == nil {
+		for _, txt := range txts {
+			if strings.Contains(strings.ToLower(txt), "v=stsv1") {
+				mtastsEnabled = true
+				if mtastsDesc == "Not configured" {
+					mtastsDesc = txt
+				}
+				break
+			}
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"domain": domain,
 		"bimi": map[string]interface{}{
 			"configured": bimiEnabled,
-			"logo_url":   bimiLogoURL,
 		},
 		"mta_sts": map[string]interface{}{
 			"configured": mtastsEnabled,
 			"mode":       mtastsMode,
 		},
 		"checklist": []map[string]interface{}{
-			{"name": "SPF", "description": "Publish SPF TXT record at DNS"},
-			{"name": "DKIM", "description": "Generate DKIM keys and publish CNAME/TXT"},
-			{"name": "DMARC", "description": "Set DMARC policy (p=quarantine or p=reject)"},
-			{"name": "BIMI", "description": "Publish BIMI record with brand logo", "configured": bimiEnabled},
-			{"name": "MTA-STS", "description": "Publish MTA-STS policy for TLS enforcement", "configured": mtastsEnabled},
-			{"name": "TLS-RPT", "description": "Add SMTP TLS reporting DNS record"},
+			{"name": "SPF", "configured": spfConfigured, "description": spfDesc},
+			{"name": "DKIM", "configured": dkimConfigured, "description": dkimDesc},
+			{"name": "DMARC", "configured": dmarcConfigured, "description": dmarcDesc},
+			{"name": "BIMI", "configured": bimiEnabled, "description": bimiDesc},
+			{"name": "MTA-STS", "configured": mtastsEnabled, "description": mtastsDesc},
+			{"name": "TLS-RPT", "configured": tlsrptConfigured, "description": tlsrptDesc},
 		},
 	})
 }
@@ -204,6 +292,25 @@ func buildMTASTSPolicyFile(p *models.MTASTSPolicy) string {
 	}
 	lines = append(lines, fmt.Sprintf("max_age: %d", p.MaxAge))
 	return strings.Join(lines, "\n")
+}
+
+// splitMXHosts converts newline-separated MXHosts string to a slice
+func splitMXHosts(s string) []string {
+	if s == "" {
+		return []string{}
+	}
+	parts := strings.Split(s, "\n")
+	result := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p != "" {
+			result = append(result, p)
+		}
+	}
+	if len(result) == 0 {
+		return []string{}
+	}
+	return result
 }
 
 // buildMTASTSDNSRecord generates the DNS TXT record for MTA-STS

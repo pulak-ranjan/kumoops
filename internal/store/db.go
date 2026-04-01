@@ -133,7 +133,7 @@ func (s *Store) DeleteSession(token string) error {
 }
 
 func (s *Store) ListSessionsByAdmin(adminID uint) ([]models.AuthSession, error) {
-	var sessions []models.AuthSession
+	sessions := make([]models.AuthSession, 0)
 	err := s.DB.Where("admin_id = ? AND expires_at > ?", adminID, time.Now()).
 		Order("created_at desc").Find(&sessions).Error
 	return sessions, err
@@ -167,7 +167,7 @@ func (s *Store) UpsertSettings(st *models.AppSettings) error {
 // ----------------------
 
 func (s *Store) ListDomains() ([]models.Domain, error) {
-	var domains []models.Domain
+	domains := make([]models.Domain, 0)
 	err := s.DB.Preload("Senders").Find(&domains).Error
 	return domains, err
 }
@@ -219,7 +219,7 @@ func (s *Store) CountDomains() (int64, error) {
 // ----------------------
 
 func (s *Store) ListSendersByDomain(domainID uint) ([]models.Sender, error) {
-	var senders []models.Sender
+	senders := make([]models.Sender, 0)
 	err := s.DB.Where("domain_id = ?", domainID).Find(&senders).Error
 	return senders, err
 }
@@ -298,7 +298,7 @@ func (s *Store) UpdateAdmin(u *models.AdminUser) error {
 // ----------------------
 
 func (s *Store) ListBounceAccounts() ([]models.BounceAccount, error) {
-	var list []models.BounceAccount
+	list := make([]models.BounceAccount, 0)
 	err := s.DB.Find(&list).Error
 	return list, err
 }
@@ -328,7 +328,7 @@ func (s *Store) DeleteBounceAccount(id uint) error {
 }
 
 func (s *Store) ListBounceAccountsByUsername(username string) ([]models.BounceAccount, error) {
-	var list []models.BounceAccount
+	list := make([]models.BounceAccount, 0)
 	err := s.DB.Where("username = ?", username).Find(&list).Error
 	return list, err
 }
@@ -338,7 +338,7 @@ func (s *Store) ListBounceAccountsByUsername(username string) ([]models.BounceAc
 // ----------------------
 
 func (s *Store) ListSystemIPs() ([]models.SystemIP, error) {
-	var list []models.SystemIP
+	list := make([]models.SystemIP, 0)
 	err := s.DB.Find(&list).Error
 	return list, err
 }
@@ -382,7 +382,7 @@ func (s *Store) UpsertEmailStats(stats *models.EmailStats) error {
 }
 
 func (s *Store) GetEmailStatsByDomain(domain string, days int) ([]models.EmailStats, error) {
-	var stats []models.EmailStats
+	stats := make([]models.EmailStats, 0)
 	since := time.Now().AddDate(0, 0, -days).Truncate(24 * time.Hour)
 
 	err := s.DB.Where("domain = ? AND date >= ?", domain, since).
@@ -391,7 +391,7 @@ func (s *Store) GetEmailStatsByDomain(domain string, days int) ([]models.EmailSt
 }
 
 func (s *Store) GetEmailStatsAll(days int) ([]models.EmailStats, error) {
-	var stats []models.EmailStats
+	stats := make([]models.EmailStats, 0)
 	since := time.Now().AddDate(0, 0, -days).Truncate(24 * time.Hour)
 
 	err := s.DB.Where("date >= ?", since).Order("date asc").Find(&stats).Error
@@ -400,7 +400,7 @@ func (s *Store) GetEmailStatsAll(days int) ([]models.EmailStats, error) {
 
 
 func (s *Store) GetTodayStats() ([]models.EmailStats, error) {
-	var stats []models.EmailStats
+	stats := make([]models.EmailStats, 0)
 	today := time.Now().Truncate(24 * time.Hour)
 	err := s.DB.Where("date = ?", today).Find(&stats).Error
 	return stats, err
@@ -423,7 +423,7 @@ func (s *Store) CreateWebhookLog(wl *models.WebhookLog) error {
 }
 
 func (s *Store) ListWebhookLogs(limit int) ([]models.WebhookLog, error) {
-	var logs []models.WebhookLog
+	logs := make([]models.WebhookLog, 0)
 	err := s.DB.Order("created_at desc").Limit(limit).Find(&logs).Error
 	return logs, err
 }
@@ -451,7 +451,7 @@ func (s *Store) SaveChatLog(role, content string) error {
 }
 
 func (s *Store) GetChatHistory(limit int) ([]models.ChatLog, error) {
-	var logs []models.ChatLog
+	logs := make([]models.ChatLog, 0)
 	err := s.DB.Order("created_at desc").Limit(limit).Find(&logs).Error
 	// Reverse order for chat display
 	for i, j := 0, len(logs)-1; i < j; i, j = i+1, j-1 {
@@ -465,7 +465,7 @@ func (s *Store) GetChatHistory(limit int) ([]models.ChatLog, error) {
 // ----------------------
 
 func (s *Store) ListShapingRules() ([]models.TrafficShapingRule, error) {
-	var rules []models.TrafficShapingRule
+	rules := make([]models.TrafficShapingRule, 0)
 	err := s.DB.Order("id asc").Find(&rules).Error
 	return rules, err
 }
@@ -593,7 +593,7 @@ func (s *Store) SeedDefaultShapingRules() error {
 // ----------------------
 
 func (s *Store) ListIPPools() ([]models.IPPool, error) {
-	var pools []models.IPPool
+	pools := make([]models.IPPool, 0)
 	err := s.DB.Preload("Members").Order("id asc").Find(&pools).Error
 	return pools, err
 }
@@ -639,7 +639,7 @@ func (s *Store) RemoveIPFromPool(memberID uint) error {
 // ----------------------
 
 func (s *Store) ListSuppressed(page, pageSize int, search string) ([]models.SuppressedEmail, int64, error) {
-	var results []models.SuppressedEmail
+	results := make([]models.SuppressedEmail, 0)
 	var total int64
 	q := s.DB.Model(&models.SuppressedEmail{})
 	if search != "" {
@@ -705,7 +705,7 @@ func (s *Store) CountSuppressed() (int64, error) {
 // ----------------------
 
 func (s *Store) ListAlertRules() ([]models.AlertRule, error) {
-	var rules []models.AlertRule
+	rules := make([]models.AlertRule, 0)
 	err := s.DB.Order("id asc").Find(&rules).Error
 	return rules, err
 }
@@ -746,7 +746,7 @@ func (s *Store) CreateAlertEvent(e *models.AlertEvent) error {
 }
 
 func (s *Store) ListAlertEvents(limit int) ([]models.AlertEvent, error) {
-	var events []models.AlertEvent
+	events := make([]models.AlertEvent, 0)
 	err := s.DB.Order("fired_at desc").Limit(limit).Find(&events).Error
 	return events, err
 }
@@ -806,7 +806,7 @@ func (s *Store) CreateWarmupLog(l *models.WarmupLog) error {
 }
 
 func (s *Store) ListWarmupLogs(senderID uint, limit int) ([]models.WarmupLog, error) {
-	var logs []models.WarmupLog
+	logs := make([]models.WarmupLog, 0)
 	q := s.DB.Order("created_at desc").Limit(limit)
 	if senderID > 0 {
 		q = q.Where("sender_id = ?", senderID)
@@ -840,7 +840,7 @@ func (s *Store) BulkInsertDeliveryEvents(events []models.DeliveryEvent, since ti
 
 // ListDeliveryEvents returns a paginated, filtered list of delivery failure events.
 func (s *Store) ListDeliveryEvents(page, limit int, f DeliveryEventFilter) ([]models.DeliveryEvent, int64, error) {
-	var results []models.DeliveryEvent
+	results := make([]models.DeliveryEvent, 0)
 	var total int64
 
 	hours := 72
@@ -905,34 +905,45 @@ func (s *Store) PruneDeliveryEvents(hours int) error {
 // ----------------------
 
 // SaveReputationCheck upserts (by target) the latest reputation check result.
+// Deletes ALL old rows for the target first, then inserts fresh — avoids stale duplicates.
 func (s *Store) SaveReputationCheck(rc *models.ReputationCheck) error {
 	rc.CheckedAt = time.Now()
-	var existing models.ReputationCheck
-	err := s.DB.Where("target = ?", rc.Target).First(&existing).Error
-	if err == nil {
-		rc.ID = existing.ID
-		return s.DB.Save(rc).Error
-	}
+	// Delete every old row for this target (clean slate)
+	s.DB.Where("target = ?", rc.Target).Delete(&models.ReputationCheck{})
+	// Insert the fresh result
 	return s.DB.Create(rc).Error
 }
 
 // GetLatestReputationChecks returns the most recent check for every target (one row per target).
 func (s *Store) GetLatestReputationChecks() ([]models.ReputationCheck, error) {
 	rows := make([]models.ReputationCheck, 0)
-	err := s.DB.Raw(`
-		SELECT * FROM reputation_checks r
-		WHERE checked_at = (
-			SELECT MAX(checked_at) FROM reputation_checks
-			WHERE target = r.target
-		)
-		ORDER BY target_type, target
-	`).Scan(&rows).Error
+	err := s.DB.Order("target_type, target").Find(&rows).Error
 	return rows, err
+}
+
+// PurgeStaleReputationTargets removes reputation rows for targets that no longer exist
+// in system IPs or configured domains.
+func (s *Store) PurgeStaleReputationTargets(activeIPs, activeDomains []string) error {
+	all := make(map[string]bool)
+	for _, ip := range activeIPs {
+		all[ip] = true
+	}
+	for _, d := range activeDomains {
+		all[d] = true
+	}
+	var existing []models.ReputationCheck
+	s.DB.Find(&existing)
+	for _, rc := range existing {
+		if !all[rc.Target] {
+			s.DB.Delete(&rc)
+		}
+	}
+	return nil
 }
 
 // GetReputationHistory returns the last N checks for a specific target.
 func (s *Store) GetReputationHistory(target string, limit int) ([]models.ReputationCheck, error) {
-	var rows []models.ReputationCheck
+	rows := make([]models.ReputationCheck, 0)
 	err := s.DB.Where("target = ?", target).Order("checked_at desc").Limit(limit).Find(&rows).Error
 	return rows, err
 }
@@ -942,7 +953,7 @@ func (s *Store) GetReputationHistory(target string, limit int) ([]models.Reputat
 // ----------------------
 
 func (s *Store) ListRemoteServers() ([]models.RemoteServer, error) {
-	var servers []models.RemoteServer
+	servers := make([]models.RemoteServer, 0)
 	err := s.DB.Order("name asc").Find(&servers).Error
 	return servers, err
 }

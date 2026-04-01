@@ -177,19 +177,44 @@ func kumoAPI(method, path string, payload interface{}) ([]byte, error) {
 
 // ─── Polling loop ─────────────────────────────────────────────────────────────
 
+// deleteWebhook removes any active webhook so getUpdates polling works.
+// Telegram ignores getUpdates while a webhook is set.
+func deleteWebhook(token string) {
+	url := fmt.Sprintf("https://api.telegram.org/bot%s/deleteWebhook", token)
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Printf("[Telegram] deleteWebhook failed: %v", err)
+		return
+	}
+	resp.Body.Close()
+	log.Println("[Telegram] Webhook cleared, polling mode active")
+}
+
 // StartPolling begins long-polling for Telegram bot commands. Runs forever.
 func (tb *TelegramBot) StartPolling() {
 	log.Println("[Telegram] Bot polling started")
 	offset := 0
+	webhookCleared := false
 
 	for {
 		settings, err := tb.Store.GetSettings()
 		if err != nil || settings == nil || !settings.TelegramEnabled || settings.TelegramBotToken == "" {
+			if err != nil {
+				log.Printf("[Telegram] Settings load error: %v", err)
+			}
 			time.Sleep(30 * time.Second)
+			webhookCleared = false
 			continue
 		}
 
 		token := settings.TelegramBotToken
+
+		// Clear any existing webhook on first successful config load
+		if !webhookCleared {
+			deleteWebhook(token)
+			webhookCleared = true
+		}
+
 		apiURL := fmt.Sprintf(
 			"https://api.telegram.org/bot%s/getUpdates?offset=%d&timeout=25",
 			token, offset,
@@ -197,6 +222,7 @@ func (tb *TelegramBot) StartPolling() {
 
 		resp, err := http.Get(apiURL)
 		if err != nil {
+			log.Printf("[Telegram] getUpdates error: %v", err)
 			time.Sleep(5 * time.Second)
 			continue
 		}
@@ -204,8 +230,15 @@ func (tb *TelegramBot) StartPolling() {
 		data, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
 
+		if resp.StatusCode != 200 {
+			log.Printf("[Telegram] getUpdates HTTP %d: %s", resp.StatusCode, string(data))
+			time.Sleep(10 * time.Second)
+			continue
+		}
+
 		var updates tgGetUpdatesResp
 		if err := json.Unmarshal(data, &updates); err != nil || !updates.OK {
+			log.Printf("[Telegram] getUpdates parse error: err=%v ok=%v body=%s", err, updates.OK, string(data))
 			time.Sleep(5 * time.Second)
 			continue
 		}

@@ -40,7 +40,16 @@ func main() {
 
 	// Start Telegram bot polling (runs forever, reconnects on failure)
 	tgBot := core.NewTelegramBot(st)
-	go tgBot.StartPolling()
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[Telegram] Bot polling crashed: %v — restarting in 10s", r)
+				time.Sleep(10 * time.Second)
+				go tgBot.StartPolling()
+			}
+		}()
+		tgBot.StartPolling()
+	}()
 
 	// Start Inbound Mail Processor (FBL + DSN from Maildir)
 	inbound := core.NewInboundProcessor(st)

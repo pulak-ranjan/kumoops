@@ -31,6 +31,7 @@ export default function WebhooksPage() {
   const fetchSettings = async () => {
     try {
       const res = await fetch('/api/webhooks/settings', { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) setSettings(await res.json());
     } catch (e) { console.error(e); }
   };
@@ -49,6 +50,7 @@ export default function WebhooksPage() {
     setSaving(true);
     try {
       const res = await fetch('/api/webhooks/settings', { method: 'POST', headers, body: JSON.stringify(settings) });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) setMessage('Settings saved successfully');
       else setMessage('Failed to save settings');
     } catch (e) { setMessage('Error: ' + e.message); }
@@ -61,6 +63,7 @@ export default function WebhooksPage() {
     setTesting(true);
     try {
       const res = await fetch('/api/webhooks/test', { method: 'POST', headers, body: JSON.stringify({ webhook_url: settings.webhook_url }) });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) { setMessage('Test payload sent!'); fetchLogs(); }
       else setMessage('Test failed');
     } catch (e) { setMessage('Error: ' + e.message); }
@@ -70,7 +73,8 @@ export default function WebhooksPage() {
 
   const triggerAction = async (endpoint, successMsg) => {
     try {
-      await fetch(endpoint, { method: 'POST', headers });
+      const tres = await fetch(endpoint, { method: 'POST', headers });
+      if (tres.status === 401) { window.location.href = '/login'; return; }
       setMessage(successMsg);
       fetchLogs();
     } catch (e) { setMessage('Error: ' + e.message); }

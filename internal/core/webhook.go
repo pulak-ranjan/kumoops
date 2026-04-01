@@ -130,46 +130,39 @@ func (ws *WebhookService) SendAuditLog(action, details, user string) error {
 // 2. Blacklist Checker
 // If forceReport is true, it sends a webhook even if no issues are found (for manual checks).
 func (ws *WebhookService) CheckBlacklists(forceReport bool) error {
-	ips, err := ws.Store.ListSystemIPs()
+	// Delegate to the full reputation engine (8 IP RBLs + 5 domain DBLs, saves to DB)
+	results, err := CheckReputation(ws.Store)
 	if err != nil {
 		return err
 	}
 
-	rbls := []string{
-		"zen.spamhaus.org",
-		"b.barracudacentral.org",
-		"bl.spamcop.net",
+	var issues []string
+	for _, rc := range results {
+		if rc.Status == "listed" {
+			icon := "🌐"
+			if rc.TargetType == "ip" {
+				icon = "🖥️"
+			}
+			issues = append(issues, fmt.Sprintf("❌ %s **%s** listed on **%s**", icon, rc.Target, rc.ListedOn))
+		}
 	}
 
-	var issues []string
-	checkedCount := 0
+	if len(issues) > 0 {
+		return ws.sendAlert("🚫 Blacklist Alert", "The following targets are blacklisted:", issues, 15158332)
+	}
 
-	for _, ipObj := range ips {
-		ip := ipObj.Value
-		parts := strings.Split(ip, ".")
-		if len(parts) != 4 {
-			continue
-		}
-		reversedIP := fmt.Sprintf("%s.%s.%s.%s", parts[3], parts[2], parts[1], parts[0])
-
-		for _, rbl := range rbls {
-			lookup := fmt.Sprintf("%s.%s", reversedIP, rbl)
-			if result, err := net.LookupHost(lookup); err == nil && len(result) > 0 {
-				issues = append(issues, fmt.Sprintf("❌ IP **%s** listed on **%s**", ip, rbl))
+	if forceReport {
+		ipCount := 0
+		domainCount := 0
+		for _, rc := range results {
+			if rc.TargetType == "ip" {
+				ipCount++
+			} else {
+				domainCount++
 			}
 		}
-		checkedCount++
-	}
-
-	// Alert if issues found (Priority: Red)
-	if len(issues) > 0 {
-		return ws.sendAlert("🚫 Blacklist Alert", "The following IPs are blacklisted:", issues, 15158332)
-	}
-
-	// If forced report (manual click) and clean (Priority: Green)
-	if forceReport {
 		return ws.sendAlert("✅ Blacklist Report",
-			fmt.Sprintf("Scanned %d IPs against %d RBLs.", checkedCount, len(rbls)),
+			fmt.Sprintf("Scanned %d IPs and %d domains against 13 RBLs.", ipCount, domainCount),
 			[]string{"All systems clean. No blacklistings detected."},
 			3066993)
 	}

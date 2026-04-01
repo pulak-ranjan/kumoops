@@ -15,7 +15,7 @@ func (s *Store) CreateCampaignVariant(v *models.CampaignVariant) error {
 }
 
 func (s *Store) ListCampaignVariants(campaignID uint) ([]models.CampaignVariant, error) {
-	var vs []models.CampaignVariant
+	vs := make([]models.CampaignVariant, 0)
 	return vs, s.DB.Where("campaign_id = ?", campaignID).Order("name").Find(&vs).Error
 }
 
@@ -55,7 +55,7 @@ func (s *Store) CreateSeedMailbox(m *models.SeedMailbox) error {
 }
 
 func (s *Store) ListSeedMailboxes() ([]models.SeedMailbox, error) {
-	var ms []models.SeedMailbox
+	ms := make([]models.SeedMailbox, 0)
 	return ms, s.DB.Order("isp, email").Find(&ms).Error
 }
 
@@ -81,7 +81,7 @@ func (s *Store) CreatePlacementTest(t *models.PlacementTest) error {
 }
 
 func (s *Store) ListPlacementTests(limit int) ([]models.PlacementTest, error) {
-	var ts []models.PlacementTest
+	ts := make([]models.PlacementTest, 0)
 	q := s.DB.Order("created_at DESC")
 	if limit > 0 {
 		q = q.Limit(limit)
@@ -100,6 +100,6 @@ func (s *Store) UpdatePlacementTest(t *models.PlacementTest) error {
 }
 
 func (s *Store) ListPlacementResults(testID uint) ([]models.PlacementResult, error) {
-	var rs []models.PlacementResult
+	rs := make([]models.PlacementResult, 0)
 	return rs, s.DB.Where("test_id = ?", testID).Order("isp").Find(&rs).Error
 }

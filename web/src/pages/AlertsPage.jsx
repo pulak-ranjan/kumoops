@@ -171,6 +171,7 @@ export default function AlertsPage() {
     if (!confirm('Delete this alert rule?')) return;
     try {
       const res = await fetch(`/api/alerts/rules/${id}`, { method: 'DELETE', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Delete failed');
       showToast('success', 'Alert rule deleted.');
       fetchRules();
@@ -186,6 +187,7 @@ export default function AlertsPage() {
         headers,
         body: JSON.stringify({ ...rule, is_enabled: !rule.is_enabled }),
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Toggle failed');
       fetchRules();
     } catch (e) {
@@ -196,6 +198,7 @@ export default function AlertsPage() {
   const testRule = async (id) => {
     try {
       const res = await fetch(`/api/alerts/test/${id}`, { method: 'POST', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Test failed');
       showToast('success', 'Test alert fired. Check your channel.');
     } catch (e) {

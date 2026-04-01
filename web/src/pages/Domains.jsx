@@ -242,7 +242,7 @@ export default function Domains() {
                     <div className="text-sm text-muted-foreground italic">No senders configured.</div>
                   ) : (
                     <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
-                      {d.senders.map((s) => (
+                      {(d.senders || []).map((s) => (
                         <div key={s.id} className="flex items-center justify-between p-2 rounded-md border bg-background text-sm">
                           <div className="flex items-center gap-3">
                             <Mail className="w-4 h-4 text-muted-foreground" />

@@ -13,6 +13,8 @@ const headers = () => ({ Authorization: `Bearer ${token()}` });
 const EVENT_META = {
   Bounce:           { label: 'Hard Bounce',  bg: 'bg-red-100 dark:bg-red-900/30',    text: 'text-red-700 dark:text-red-400',    dot: 'bg-red-500' },
   TransientFailure: { label: 'Deferred',     bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-400', dot: 'bg-orange-500' },
+  Expiration:       { label: 'Expired',      bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-400', dot: 'bg-yellow-500' },
+  OOB:              { label: 'OOB Bounce',   bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-400', dot: 'bg-purple-500' },
 };
 
 function TypeBadge({ type }) {
@@ -67,6 +69,7 @@ export default function DeliveryLogPage() {
   const fetchSummary = useCallback(async () => {
     try {
       const res = await fetch(`/api/delivery-log/summary?hours=${hours}`, { headers: headers() });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) setSummary(await res.json());
     } catch (_) {}
   }, [hours]);
@@ -94,7 +97,8 @@ export default function DeliveryLogPage() {
   const doRefresh = async () => {
     setRefreshing(true);
     try {
-      await fetch(`/api/delivery-log/refresh?hours=${hours}`, { method: 'POST', headers: headers() });
+      const rr = await fetch(`/api/delivery-log/refresh?hours=${hours}`, { method: 'POST', headers: headers() });
+      if (rr.status === 401) { window.location.href = '/login'; return; }
     } catch (_) {}
     await Promise.all([fetchEvents(1), fetchSummary()]);
     setPage(1);
@@ -221,6 +225,8 @@ export default function DeliveryLogPage() {
           <option value="">All Types</option>
           <option value="Bounce">Hard Bounce</option>
           <option value="TransientFailure">Deferred</option>
+          <option value="Expiration">Expired</option>
+          <option value="OOB">OOB Bounce</option>
         </select>
         {(recipient || domain || typeFilter) && (
           <button
@@ -314,7 +320,7 @@ export default function DeliveryLogPage() {
                       {isOpen && (
                         <tr className="bg-muted/20">
                           <td colSpan={7} className="px-6 py-4">
-                            <div className="grid sm:grid-cols-2 gap-4 text-xs">
+                            <div className="grid sm:grid-cols-3 gap-4 text-xs">
                               <div>
                                 <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">Sender</p>
                                 <p className="font-mono break-all">{ev.sender || '—'}</p>
@@ -323,7 +329,23 @@ export default function DeliveryLogPage() {
                                 <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">Recipient Domain</p>
                                 <p className="font-mono">{ev.domain || '—'}</p>
                               </div>
-                              <div className="sm:col-span-2">
+                              <div>
+                                <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">MX Server</p>
+                                <p className="font-mono">{ev.site || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">Queue</p>
+                                <p className="font-mono">{ev.queue || '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">Egress Pool / Source</p>
+                                <p className="font-mono">{ev.egress_pool || '—'}{ev.egress_source ? ` → ${ev.egress_source}` : ''}</p>
+                              </div>
+                              <div>
+                                <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">Attempts / Classification</p>
+                                <p className="font-mono">{ev.num_attempts || 1} attempt{(ev.num_attempts || 1) !== 1 ? 's' : ''}{ev.bounce_classification ? ` · ${ev.bounce_classification}` : ''}</p>
+                              </div>
+                              <div className="sm:col-span-3">
                                 <p className="text-muted-foreground font-medium uppercase tracking-wide mb-1">Full SMTP Response</p>
                                 <pre className="bg-zinc-950 text-zinc-300 rounded-lg p-3 text-xs font-mono whitespace-pre-wrap break-all leading-relaxed">
                                   {ev.error_msg || 'No response message recorded.'}

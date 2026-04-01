@@ -10,6 +10,7 @@ import (
 	"github.com/pulak-ranjan/kumoops/internal/core"
 	"github.com/pulak-ranjan/kumoops/internal/models"
 	"github.com/pulak-ranjan/kumoops/internal/store"
+	"gorm.io/gorm"
 )
 
 // Transparent 1x1 GIF
@@ -71,21 +72,17 @@ func (h *TrackingHandler) recordOpen(id uint, r *http.Request) {
 		recip.OpenedAt = &now
 		h.Store.DB.Save(&recip)
 
-		// Increment Campaign Stats
-		var camp models.Campaign
-		if err := h.Store.DB.First(&camp, recip.CampaignID).Error; err == nil {
-			camp.TotalOpens++
-			h.Store.DB.Save(&camp)
-		}
+		// Increment Campaign Stats (atomic to prevent race conditions)
+		h.Store.DB.Model(&models.Campaign{}).Where("id = ?", recip.CampaignID).
+			UpdateColumn("total_opens", gorm.Expr("total_opens + 1"))
 
-		// Update Contact Score (AI Superlead)
+		// Update Contact Score (AI Superlead) — atomic
 		if recip.ContactID > 0 {
-			var contact models.Contact
-			if err := h.Store.DB.First(&contact, recip.ContactID).Error; err == nil {
-				contact.TotalOpens++
-				contact.Score += 1 // +1 for open
-				h.Store.DB.Save(&contact)
-			}
+			h.Store.DB.Model(&models.Contact{}).Where("id = ?", recip.ContactID).
+				UpdateColumns(map[string]interface{}{
+					"total_opens": gorm.Expr("total_opens + 1"),
+					"score":       gorm.Expr("score + 1"),
+				})
 		}
 	}
 }
@@ -101,21 +98,17 @@ func (h *TrackingHandler) recordClick(id uint) {
 		recip.ClickedAt = &now
 		h.Store.DB.Save(&recip)
 
-		// Increment Campaign Stats
-		var camp models.Campaign
-		if err := h.Store.DB.First(&camp, recip.CampaignID).Error; err == nil {
-			camp.TotalClicks++
-			h.Store.DB.Save(&camp)
-		}
+		// Increment Campaign Stats (atomic to prevent race conditions)
+		h.Store.DB.Model(&models.Campaign{}).Where("id = ?", recip.CampaignID).
+			UpdateColumn("total_clicks", gorm.Expr("total_clicks + 1"))
 
-		// Update Contact Score
+		// Update Contact Score — atomic
 		if recip.ContactID > 0 {
-			var contact models.Contact
-			if err := h.Store.DB.First(&contact, recip.ContactID).Error; err == nil {
-				contact.TotalClicks++
-				contact.Score += 5 // +5 for click (higher intent)
-				h.Store.DB.Save(&contact)
-			}
+			h.Store.DB.Model(&models.Contact{}).Where("id = ?", recip.ContactID).
+				UpdateColumns(map[string]interface{}{
+					"total_clicks": gorm.Expr("total_clicks + 1"),
+					"score":        gorm.Expr("score + 5"),
+				})
 		}
 	}
 }

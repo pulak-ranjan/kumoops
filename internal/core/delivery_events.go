@@ -205,11 +205,17 @@ func parseFileForDeliveryEvents(file string, cutoff time.Time) []models.Delivery
 	scanner.Buffer(buf, 5*1024*1024)
 
 	type entry struct {
-		Type      string    `json:"type"`
-		Timestamp time.Time `json:"event_time"`
-		Sender    string    `json:"sender"`
-		Recipient string    `json:"recipient"`
-		Response  struct {
+		Type        string    `json:"type"`
+		Timestamp   time.Time `json:"event_time"`
+		Sender      string    `json:"sender"`
+		Recipient   string    `json:"recipient"`
+		Queue       string    `json:"queue"`
+		Site        string    `json:"site"`
+		NumAttempts int       `json:"num_attempts"`
+		EgressPool  string    `json:"egress_pool"`
+		EgressSrc   string    `json:"egress_source"`
+		BounceClass string    `json:"bounce_classification"`
+		Response    struct {
 			Code    int    `json:"code"`
 			Content string `json:"content"`
 		} `json:"response"`
@@ -232,8 +238,11 @@ func parseFileForDeliveryEvents(file string, cutoff time.Time) []models.Delivery
 		if e.Timestamp.Before(cutoff) {
 			continue
 		}
-		// Only track failure events
-		if e.Type != "Bounce" && e.Type != "TransientFailure" {
+		// Track failure events + Expiration + OOB
+		switch e.Type {
+		case "Bounce", "TransientFailure", "Expiration", "OOB":
+			// continue processing
+		default:
 			continue
 		}
 		if e.Recipient == "" {
@@ -244,14 +253,20 @@ func parseFileForDeliveryEvents(file string, cutoff time.Time) []models.Delivery
 		provider := classifyProvider(domain)
 
 		results = append(results, models.DeliveryEvent{
-			Timestamp: e.Timestamp,
-			EventType: e.Type,
-			Sender:    e.Sender,
-			Recipient: e.Recipient,
-			Domain:    domain,
-			ErrorCode: e.Response.Code,
-			ErrorMsg:  e.Response.Content,
-			Provider:  provider,
+			Timestamp:   e.Timestamp,
+			EventType:   e.Type,
+			Sender:      e.Sender,
+			Recipient:   e.Recipient,
+			Domain:      domain,
+			ErrorCode:   e.Response.Code,
+			ErrorMsg:    e.Response.Content,
+			Provider:    provider,
+			Site:        e.Site,
+			Queue:       e.Queue,
+			EgressPool:  e.EgressPool,
+			EgressSrc:   e.EgressSrc,
+			NumAttempts: e.NumAttempts,
+			BounceClass: e.BounceClass,
 		})
 	}
 

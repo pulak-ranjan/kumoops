@@ -288,6 +288,7 @@ export default function QueuePage() {
   const fetchStats = async () => {
     try {
       const res = await fetch('/api/queue/stats', { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) setStats(await res.json());
     } catch (e) { console.error(e); }
   };
@@ -295,6 +296,7 @@ export default function QueuePage() {
   const fetchStuckCount = async () => {
     try {
       const res = await fetch('/api/queue/stuck', { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) {
         const data = await res.json();
         const list = Array.isArray(data) ? data : (data.messages || []);
@@ -306,7 +308,8 @@ export default function QueuePage() {
   const deleteMessage = async (id) => {
     if (!confirm('Delete this message from queue?')) return;
     try {
-      await fetch(`/api/queue/${id}`, { method: 'DELETE', headers });
+      const res = await fetch(`/api/queue/${id}`, { method: 'DELETE', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       fetchQueue(); fetchStats();
     } catch (e) { console.error(e); }
   };
@@ -314,7 +317,8 @@ export default function QueuePage() {
   const flushQueue = async () => {
     if (!confirm('Retry all deferred messages?')) return;
     try {
-      await fetch('/api/queue/flush', { method: 'POST', headers });
+      const res = await fetch('/api/queue/flush', { method: 'POST', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       fetchQueue(); fetchStats();
     } catch (e) { console.error(e); }
   };

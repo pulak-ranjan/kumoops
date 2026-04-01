@@ -227,7 +227,10 @@ func (s *Server) handleListMailboxMessages(w http.ResponseWriter, r *http.Reques
 				continue
 			}
 			fpath := filepath.Join(dir, entry.Name())
-			fi, _ := entry.Info()
+			fi, err := entry.Info()
+			if err != nil {
+				continue
+			}
 			from, subj, date := parseMailHeaders(fpath)
 			msgs = append(msgs, msgMeta{
 				ID:      entry.Name(),

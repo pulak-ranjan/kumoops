@@ -110,7 +110,8 @@ function LiveTab({ autoRefresh }) {
     setLoading(true);
     try {
       const res = await fetch(`/api/stats/hourly?hours=${hours}`, { headers: hdrs() });
-      if (res.ok) setData(await res.json());
+      if (res.status === 401) { window.location.href = '/login'; return; }
+      if (res.ok) { const d = await res.json(); setData(Array.isArray(d) ? d : []); }
     } catch (_) {}
     setLoading(false);
     setCountdown(30);
@@ -140,10 +141,10 @@ function LiveTab({ autoRefresh }) {
     ],
   };
 
-  const totalSent      = data.reduce((s, d) => s + d.sent, 0);
-  const totalDelivered = data.reduce((s, d) => s + d.delivered, 0);
-  const totalBounced   = data.reduce((s, d) => s + d.bounced, 0);
-  const totalDeferred  = data.reduce((s, d) => s + d.deferred, 0);
+  const totalSent      = data.reduce((s, d) => s + (d.sent || 0), 0);
+  const totalDelivered = data.reduce((s, d) => s + (d.delivered || 0), 0);
+  const totalBounced   = data.reduce((s, d) => s + (d.bounced || 0), 0);
+  const totalDeferred  = data.reduce((s, d) => s + (d.deferred || 0), 0);
   const peakHour       = data.reduce((best, d) => d.sent > (best?.sent ?? -1) ? d : best, null);
 
   return (
@@ -386,7 +387,7 @@ function ProvidersTab({ days }) {
     labels: providerStats.map(p => p.provider),
     datasets: [{
       label: 'Delivery Rate %',
-      data:  providerStats.map(p => +p.delivery_rate.toFixed(1)),
+      data:  providerStats.map(p => +(p.delivery_rate || 0).toFixed(1)),
       backgroundColor: providerStats.map(p => getProviderMeta(p.provider).color + 'CC'),
       borderColor:     providerStats.map(p => getProviderMeta(p.provider).color),
       borderWidth: 1,
@@ -458,7 +459,7 @@ function ProvidersTab({ days }) {
                       {p.sent > 0 ? <DeliveryRateBar rate={p.delivery_rate} /> : <span className="text-muted-foreground text-xs">No data</span>}
                     </td>
                     <td className={cn('px-6 py-4 text-right tabular-nums text-xs font-medium', bounceColor)}>
-                      {p.bounce_rate.toFixed(2)}%
+                      {(p.bounce_rate || 0).toFixed(2)}%
                     </td>
                     <td className="px-6 py-4 text-right tabular-nums text-muted-foreground text-xs">{share}%</td>
                   </tr>
@@ -494,7 +495,7 @@ function ProvidersTab({ days }) {
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">{p.deferral_rate.toFixed(1)}% rate</span>
+                      <span className="text-xs text-orange-600 dark:text-orange-400 font-medium">{(p.deferral_rate || 0).toFixed(1)}% rate</span>
                       <TrendingDown className={cn('w-4 h-4 text-muted-foreground transition-transform', isExpanded && 'rotate-180')} />
                     </div>
                   </button>
@@ -548,10 +549,11 @@ export default function StatsPage() {
         fetch(`/api/stats/domains?days=${days}`, { headers: hdrs() }),
         fetch('/api/stats/summary', { headers: hdrs() }),
       ]);
-      if (statsRes.status === 401) { window.location.href = '/login'; return; }
-      setDomainList(Array.isArray(await domainsRes.json()) ? await domainsRes.clone().json() : []);
-      setStats(await statsRes.json() || {});
-      setSummary(await summaryRes.json());
+      if (statsRes.status === 401 || domainsRes.status === 401 || summaryRes.status === 401) { window.location.href = '/login'; return; }
+      const dData = await domainsRes.json();
+      setDomainList(Array.isArray(dData) ? dData : []);
+      setStats((await statsRes.json()) || {});
+      setSummary((await summaryRes.json()) || {});
       setLastUpdated(new Date());
     } catch (_) {}
     setLoading(false);

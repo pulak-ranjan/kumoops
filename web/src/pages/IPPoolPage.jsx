@@ -139,6 +139,7 @@ export default function IPPoolPage() {
           headers,
           body: JSON.stringify(poolForm),
         });
+        if (res.status === 401) { window.location.href = '/login'; return; }
         if (!res.ok) throw new Error('Failed to update pool');
       } else {
         const res = await fetch('/api/ippools', {
@@ -146,6 +147,7 @@ export default function IPPoolPage() {
           headers,
           body: JSON.stringify(poolForm),
         });
+        if (res.status === 401) { window.location.href = '/login'; return; }
         if (!res.ok) throw new Error('Failed to create pool');
       }
       closePoolModal();
@@ -161,6 +163,7 @@ export default function IPPoolPage() {
     if (!confirm(`Delete pool "${pool.name}" and all its members? This cannot be undone.`)) return;
     try {
       const res = await fetch(`/api/ippools/${pool.id}`, { method: 'DELETE', headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Failed to delete pool');
       fetchPools();
     } catch (e) {
@@ -184,6 +187,7 @@ export default function IPPoolPage() {
         headers,
         body: JSON.stringify({ ip_value: value }),
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Failed to add IP');
       setAddIPValues({ ...addIPValues, [pool.id]: '' });
       fetchPools();
@@ -200,6 +204,7 @@ export default function IPPoolPage() {
         method: 'DELETE',
         headers,
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (!res.ok) throw new Error('Failed to remove member');
       fetchPools();
     } catch (e) {

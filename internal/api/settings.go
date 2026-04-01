@@ -15,8 +15,31 @@ type settingsDTO struct {
 	RelayIPs     string `json:"relay_ips"`
 	TLSCertPath  string `json:"tls_cert_path"`
 	TLSKeyPath   string `json:"tls_key_path"`
-	AIProvider   string `json:"ai_provider"`
-	AIAPIKey     string `json:"ai_api_key,omitempty"`
+
+	// AI
+	AIProvider    string `json:"ai_provider"`
+	AIAPIKey      string `json:"ai_api_key,omitempty"`
+	OllamaBaseURL string `json:"ollama_base_url"`
+	OllamaModel   string `json:"ollama_model"`
+
+	// Telegram
+	TelegramBotToken   string `json:"telegram_bot_token,omitempty"`
+	TelegramChatID     string `json:"telegram_chat_id"`
+	TelegramEnabled    bool   `json:"telegram_enabled"`
+	TelegramDigestHour int    `json:"telegram_digest_hour"`
+
+	// Discord Webhook
+	DiscordWebhookURL string `json:"discord_webhook_url"`
+	DiscordEnabled    bool   `json:"discord_enabled"`
+
+	// Discord Bot
+	DiscordBotToken      string `json:"discord_bot_token,omitempty"`
+	DiscordApplicationID string `json:"discord_application_id"`
+	DiscordPublicKey     string `json:"discord_public_key"`
+	DiscordBotEnabled    bool   `json:"discord_bot_enabled"`
+
+	// Server label
+	ServerLabel string `json:"server_label"`
 }
 
 // GET /api/settings
@@ -33,13 +56,26 @@ func (s *Server) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, settingsDTO{
-		MainHostname: st.MainHostname,
-		MainServerIP: st.MainServerIP,
-		RelayIPs:     st.MailWizzIP,
-		TLSCertPath:  st.TLSCertPath,
-		TLSKeyPath:   st.TLSKeyPath,
-		AIProvider:   st.AIProvider,
-		// AIAPIKey intentionally omitted - write-only
+		MainHostname:         st.MainHostname,
+		MainServerIP:         st.MainServerIP,
+		RelayIPs:             st.MailWizzIP,
+		TLSCertPath:          st.TLSCertPath,
+		TLSKeyPath:           st.TLSKeyPath,
+		AIProvider:           st.AIProvider,
+		OllamaBaseURL:        st.OllamaBaseURL,
+		OllamaModel:          st.OllamaModel,
+		// AIAPIKey intentionally omitted on GET — write-only
+		TelegramChatID:       st.TelegramChatID,
+		TelegramEnabled:      st.TelegramEnabled,
+		TelegramDigestHour:   st.TelegramDigestHour,
+		// TelegramBotToken omitted on GET — write-only
+		DiscordWebhookURL:    st.DiscordWebhookURL,
+		DiscordEnabled:       st.DiscordEnabled,
+		DiscordApplicationID: st.DiscordApplicationID,
+		DiscordPublicKey:     st.DiscordPublicKey,
+		DiscordBotEnabled:    st.DiscordBotEnabled,
+		// DiscordBotToken omitted on GET — write-only
+		ServerLabel:          st.ServerLabel,
 	})
 }
 
@@ -67,7 +103,31 @@ func (s *Server) handleSetSettings(w http.ResponseWriter, r *http.Request) {
 	existing.TLSCertPath = dto.TLSCertPath
 	existing.TLSKeyPath = dto.TLSKeyPath
 	existing.AIProvider = dto.AIProvider
+	existing.OllamaBaseURL = dto.OllamaBaseURL
+	existing.OllamaModel = dto.OllamaModel
 
+	// Telegram
+	existing.TelegramChatID = dto.TelegramChatID
+	existing.TelegramEnabled = dto.TelegramEnabled
+	existing.TelegramDigestHour = dto.TelegramDigestHour
+	if dto.TelegramBotToken != "" {
+		existing.TelegramBotToken = dto.TelegramBotToken
+	}
+
+	// Discord
+	existing.DiscordWebhookURL = dto.DiscordWebhookURL
+	existing.DiscordEnabled = dto.DiscordEnabled
+	existing.DiscordApplicationID = dto.DiscordApplicationID
+	existing.DiscordPublicKey = dto.DiscordPublicKey
+	existing.DiscordBotEnabled = dto.DiscordBotEnabled
+	if dto.DiscordBotToken != "" {
+		existing.DiscordBotToken = dto.DiscordBotToken
+	}
+
+	// Server label
+	existing.ServerLabel = dto.ServerLabel
+
+	// Encrypt sensitive keys
 	if dto.AIAPIKey != "" {
 		enc, err := core.Encrypt(dto.AIAPIKey)
 		if err != nil {

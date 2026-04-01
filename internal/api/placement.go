@@ -60,7 +60,11 @@ func (s *Server) handleCreateSeedMailbox(w http.ResponseWriter, r *http.Request)
 
 // DELETE /api/placement/mailboxes/{id}
 func (s *Server) handleDeleteSeedMailbox(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	id, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid ID"})
+		return
+	}
 	if err := s.Store.DeleteSeedMailbox(uint(id)); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
@@ -109,7 +113,11 @@ func (s *Server) handleCreatePlacementTest(w http.ResponseWriter, r *http.Reques
 
 // GET /api/placement/tests/{id}
 func (s *Server) handleGetPlacementTest(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	id, err := strconv.ParseUint(chi.URLParam(r, "id"), 10, 64)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid ID"})
+		return
+	}
 	t, err := s.Store.GetPlacementTest(uint(id))
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "test not found"})

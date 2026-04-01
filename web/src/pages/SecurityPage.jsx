@@ -41,6 +41,7 @@ export default function SecurityPage() {
   const fetchSessions = async () => {
     try {
       const res = await fetch('/api/auth/sessions', { headers });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) setSessions(await res.json() || []);
     } catch (e) { console.error(e); }
   };
@@ -51,6 +52,7 @@ export default function SecurityPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/auth/setup-2fa', { method: 'POST', headers, body: JSON.stringify({ password }) });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) {
         const data = await res.json();
         setSetup2FA(data);
@@ -72,6 +74,7 @@ export default function SecurityPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/auth/enable-2fa', { method: 'POST', headers, body: JSON.stringify({ code }) });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) {
         setMessage('2FA enabled successfully!');
         setSetup2FA(null);
@@ -91,6 +94,7 @@ export default function SecurityPage() {
     setLoading(true);
     try {
       const res = await fetch('/api/auth/disable-2fa', { method: 'POST', headers, body: JSON.stringify({ password: disablePassword, code: disableCode }) });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       if (res.ok) {
         setMessage('2FA disabled');
         setDisablePassword('');

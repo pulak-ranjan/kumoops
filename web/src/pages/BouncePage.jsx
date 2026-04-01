@@ -62,6 +62,7 @@ export default function BouncePage() {
         headers: hdrs(),
         body: JSON.stringify({ ...createForm, id: 0 }),
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to create");
       setCreating(false);
@@ -89,6 +90,7 @@ export default function BouncePage() {
         headers: hdrs(),
         body: JSON.stringify({ id: editing.id, username: editing.username, domain: editing.domain, notes: passForm.notes, password: passForm.password || undefined }),
       });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to update");
       setEditing(null);
@@ -118,6 +120,7 @@ export default function BouncePage() {
     setReqResults(null);
     try {
       const res = await fetch("/api/bounces/create-required", { method: "POST", headers: hdrs(), body: "{}" });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setReqResults(data.results || []);
       load();
@@ -136,6 +139,7 @@ export default function BouncePage() {
     setMsgsLoading(true);
     try {
       const res = await fetch(`/api/bounces/${account.id}/messages`, { headers: hdrs() });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setMessages(Array.isArray(data) ? data : []);
     } catch { setMessages([]); }
@@ -145,6 +149,7 @@ export default function BouncePage() {
     if (!viewAccount) return;
     try {
       const res = await fetch(`/api/bounces/${viewAccount.id}/messages/${encodeURIComponent(msgId)}`, { headers: hdrs() });
+      if (res.status === 401) { window.location.href = '/login'; return; }
       const data = await res.json();
       setOpenMsg({ id: msgId, raw: data.raw || "" });
     } catch { setOpenMsg({ id: msgId, raw: "Failed to load message." }); }

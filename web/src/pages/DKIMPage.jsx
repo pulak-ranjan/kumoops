@@ -7,7 +7,7 @@ export default function DKIMPage() {
   const [records, setRecords] = useState([]);
   const [domains, setDomains] = useState([]);
   const [selectedDomain, setSelectedDomain] = useState("");
-  const [msg, setMsg] = useState("");
+  const [msg, setMsg] = useState({ text: "", type: "" });
   const [form, setForm] = useState({ domain: "", local_part: "" });
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,7 @@ export default function DKIMPage() {
       setRecords(Array.isArray(recs) ? recs : []);
       setDomains(Array.isArray(doms) ? doms : []);
     } catch (err) {
-      setMsg(err.message || "Failed to load data");
+      setMsg({ text: err.message || "Failed to load data", type: "error" });
     } finally {
       setLoading(false);
     }
@@ -30,13 +30,13 @@ export default function DKIMPage() {
   const onGenerate = async (e) => {
     e.preventDefault();
     setBusy(true);
-    setMsg("");
+    setMsg({ text: "", type: "" });
     try {
       await generateDKIM(form.domain, form.local_part || undefined);
-      setMsg("DKIM keys generated. Refreshing records...");
+      setMsg({ text: "DKIM keys generated successfully!", type: "success" });
       await load();
     } catch (err) {
-      setMsg(err.message || "Failed to generate DKIM");
+      setMsg({ text: err.message || "Failed to generate DKIM", type: "error" });
     } finally {
       setBusy(false);
     }
@@ -60,7 +60,7 @@ export default function DKIMPage() {
         </div>
       </div>
 
-      {msg && <div className="bg-primary/10 text-primary p-3 rounded-md text-sm">{msg}</div>}
+      {msg.text && <div className={cn("p-3 rounded-md text-sm", msg.type === "error" ? "bg-destructive/10 text-destructive" : "bg-green-500/10 text-green-600 dark:text-green-400")}>{msg.text}</div>}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Generator Panel */}
@@ -72,23 +72,40 @@ export default function DKIMPage() {
             <form onSubmit={onGenerate} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Domain</label>
-                <input 
-                  value={form.domain} 
-                  onChange={e => setForm({...form, domain: e.target.value})} 
+                <select
+                  value={form.domain}
+                  onChange={e => setForm({...form, domain: e.target.value, local_part: ""})}
                   className="w-full h-10 px-3 rounded-md border bg-background text-sm"
-                  placeholder="example.com"
                   required
-                />
+                >
+                  <option value="">Select domain…</option>
+                  {domains.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+                </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Local Part (Selector)</label>
-                <input 
-                  value={form.local_part} 
-                  onChange={e => setForm({...form, local_part: e.target.value})} 
-                  className="w-full h-10 px-3 rounded-md border bg-background text-sm"
-                  placeholder="default (optional)"
-                />
-                <p className="text-[10px] text-muted-foreground">Leave blank to generate for all existing senders.</p>
+                <label className="text-sm font-medium">Sender (Selector)</label>
+                {(() => {
+                  const dom = domains.find(d => d.name === form.domain);
+                  const senders = dom?.senders || [];
+                  return senders.length > 0 ? (
+                    <select
+                      value={form.local_part}
+                      onChange={e => setForm({...form, local_part: e.target.value})}
+                      className="w-full h-10 px-3 rounded-md border bg-background text-sm"
+                    >
+                      <option value="">All senders (generate for all)</option>
+                      {senders.map(s => <option key={s.id} value={s.local_part || s.email?.split('@')[0] || ''}>{s.email || s.local_part}</option>)}
+                    </select>
+                  ) : (
+                    <input
+                      value={form.local_part}
+                      onChange={e => setForm({...form, local_part: e.target.value})}
+                      className="w-full h-10 px-3 rounded-md border bg-background text-sm"
+                      placeholder="default (optional)"
+                    />
+                  );
+                })()}
+                <p className="text-[10px] text-muted-foreground">Leave blank to generate for all senders on this domain.</p>
               </div>
               <button 
                 type="submit" 
