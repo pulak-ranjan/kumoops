@@ -332,49 +332,180 @@ Generate an API key with `send` scope from Settings → API Keys.
 ## Architecture
 
 ```mermaid
-flowchart TD
-    subgraph KumoOps [KumoOps Platform]
-        React["React / Vite<br/>(embedded SPA)"]
-        API["Go HTTP API<br/>(chi router)"]
-        DB[("SQLite<br/>(GORM)")]
-
-        API --> React
-        API --> DB
-
-        BotT["Telegram Bot<br/>(long-poll)"]
-        BotD["Discord Bot<br/>(interactions)"]
-        Alert["Alert Checker<br/>(background)"]
-        Sched["Scheduler<br/>5min / 1h / 24h"]
-
-        API --> BotT
-        API --> BotD
-        API --> Alert
-        API --> Sched
+flowchart TB
+    %% ── User Access Layer ──
+    subgraph Users ["User Access"]
+        Browser["Browser<br/>Dashboard / Settings / Pages"]
+        TGUser["Telegram<br/>User / Group"]
+        DCUser["Discord<br/>Server"]
+        ExtApp["External Apps<br/>MailWizz / Mautic / Custom"]
     end
 
-    MTA["KumoMTA HTTP API<br/>(queue / delivery / metrics)"]
-    AI["AI Providers<br/>(OpenAI, Claude, Gemini,<br/>Groq, Mistral, DeepSeek,<br/>Together, Ollama)"]
-    Google["Google Postmaster<br/>(ISP Reputation)"]
-    SNDS["Microsoft SNDS<br/>(IP Reputation)"]
+    %% ── KumoOps Platform ──
+    subgraph KumoOps ["KumoOps Platform — Single Binary on :9000"]
 
-    API -.-> MTA
-    API -.-> AI
-    Sched -.-> Google
-    Sched -.-> SNDS
-    BotT -.-> MTA
-    BotD -.-> MTA
-    Alert -.-> MTA
+        subgraph Frontend ["Frontend — React 18 / Vite 5 / Tailwind CSS 3"]
+            SPA["Embedded SPA<br/>37 pages"]
+        end
+
+        subgraph API ["Go HTTP API — Chi Router / JWT Auth"]
+            direction TB
+            Auth["Auth & Security<br/>JWT, TOTP 2FA, API Keys,<br/>Rate Limiting, CORS"]
+            Handlers["48 Handler Files<br/>Domains, DKIM, DMARC, Stats,<br/>Campaigns, Queue, Config,<br/>Bounce, FBL, Alerts, AI..."]
+            SendAPI["HTTP Sending API<br/>POST /api/v1/messages<br/>(Mailgun-compatible)"]
+            DiscordEP["Discord Interactions<br/>Ed25519 Signature Auth"]
+        end
+
+        subgraph Core ["Business Logic — 34 Modules"]
+            direction TB
+            subgraph Infra ["Infrastructure"]
+                ConfigGen["Config Generator<br/>init.lua, sources.toml,<br/>listener_domains.toml,<br/>dkim_data.toml"]
+                Apply["Config Apply<br/>Validate + Restart"]
+                BounceEng["Bounce Engine<br/>OS user creation,<br/>Maildir setup"]
+            end
+            subgraph Deliver ["Deliverability"]
+                FBL["FBL Parser<br/>RFC 5965 ARF"]
+                DSN["DSN Parser<br/>RFC 3464"]
+                VERP["VERP Engine<br/>HMAC-SHA256"]
+                Inbound["Inbound Processor<br/>Maildir watcher (60s)"]
+                Reputation["Reputation<br/>DNSBL checker,<br/>delist URLs"]
+            end
+            subgraph Intel ["Intelligence"]
+                ISPIntel["ISP Intel<br/>Postmaster + SNDS"]
+                Throttle["Adaptive Throttler<br/>Auto-adjust per ISP"]
+                Anomaly["Anomaly Detector<br/>Auto-heal + alert"]
+                ABTest["A/B Test Engine<br/>Auto winner selection"]
+            end
+            subgraph Comms ["Communications"]
+                TGBot["Telegram Bot<br/>Long-poll, 17 commands"]
+                DCBot["Discord Bot<br/>Slash commands + buttons"]
+                Webhook["Webhook Service<br/>Alerts → Slack/Discord/Email"]
+                AlertChk["Alert Checker<br/>Bounce/blacklist/queue triggers"]
+            end
+            subgraph AILayer ["AI Layer"]
+                AIChat["AI Chat<br/>Log analysis + tools"]
+                AIAdvisor["Deliverability Advisor<br/>Score 0-100 + issues"]
+                AIContent["Content Analyzer<br/>Spam risk + suggestions"]
+                AISubject["Subject Generator<br/>Variants + style tags"]
+            end
+            Campaign["Campaigns<br/>Send, pause, resume,<br/>contacts, tracking"]
+            Warmup["IP Warmup<br/>Daily volume ramps"]
+            DKIM["DKIM Manager<br/>RSA 2048-bit keygen"]
+            Stats["Stats Engine<br/>Per-domain, per-sender"]
+            Security["Security<br/>Fail2Ban, IP block/allow,<br/>audit log, scanner"]
+        end
+
+        subgraph BG ["Background Goroutines"]
+            Scheduler["Scheduler<br/>5min: throttle, anomaly, A/B<br/>1h: ISP intel, warmup<br/>24h: digest, cleanup"]
+            TGPoll["Telegram Polling<br/>(panic recovery)"]
+            InboundBG["Inbound Scanner<br/>(60s Maildir watch)"]
+        end
+
+        subgraph Data ["Data Layer"]
+            DB[("SQLite<br/>25+ tables<br/>GORM auto-migrate")]
+            Encrypt["AES-256 GCM<br/>Secrets at rest"]
+        end
+    end
+
+    %% ── External Services ──
+    subgraph External ["External Services"]
+        MTA["KumoMTA<br/>Rust MTA on :8000<br/>Queue, Delivery, Metrics,<br/>Logs (zstd JSON)"]
+        subgraph AIProviders ["AI Providers (8)"]
+            OpenAI["OpenAI<br/>GPT-4o-mini"]
+            Claude["Anthropic<br/>Claude 3.5"]
+            Gemini["Google<br/>Gemini 2.0"]
+            Groq["Groq<br/>Llama 3.3 70B"]
+            Mistral["Mistral<br/>Mistral Small"]
+            Together["Together AI<br/>Llama 3.2"]
+            DeepSeek["DeepSeek<br/>DeepSeek Chat"]
+            Ollama["Ollama<br/>Local (free)"]
+        end
+        GooglePM["Google Postmaster<br/>Domain & IP reputation"]
+        MSSNDS["Microsoft SNDS<br/>IP reputation"]
+        DNSBL["DNSBL Servers<br/>Spamhaus, Barracuda,<br/>SpamCop, UCEPROTECT..."]
+        RemoteNodes["Remote KumoOps<br/>Cluster nodes"]
+    end
+
+    subgraph OS ["Host OS"]
+        SystemD["systemd<br/>Service management"]
+        Fail2Ban["Fail2Ban<br/>IP banning"]
+        Maildir["Maildir<br/>/home/*/Maildir"]
+        Logs["KumoMTA Logs<br/>/var/log/kumomta/"]
+    end
+
+    %% ── Connections ──
+    Browser -->|HTTPS :9000| SPA
+    SPA -->|REST API| Handlers
+    TGUser -->|Telegram API| TGBot
+    DCUser -->|Discord API| DiscordEP
+    ExtApp -->|POST /api/v1/messages| SendAPI
+
+    Handlers --> DB
+    Handlers --> Core
+    Core --> DB
+
+    TGBot --> MTA
+    DCBot --> MTA
+    Handlers -->|HTTP API :8000| MTA
+    Apply -->|Write configs + restart| MTA
+    ConfigGen -->|Generate .lua/.toml| Apply
+
+    AIChat --> AIProviders
+    AIAdvisor --> AIProviders
+    AIContent --> AIProviders
+    AISubject --> AIProviders
+
+    Scheduler -->|Hourly| ISPIntel
+    ISPIntel -->|OAuth2 JWT| GooglePM
+    ISPIntel --> MSSNDS
+    Scheduler -->|5min| Throttle
+    Scheduler -->|5min| Anomaly
+    Scheduler -->|5min| ABTest
+    AlertChk --> Webhook
+
+    Reputation --> DNSBL
+    Inbound --> Maildir
+    BounceEng --> Maildir
+    Stats --> Logs
+
+    Handlers -->|Cluster API| RemoteNodes
+    Security --> Fail2Ban
+    Apply --> SystemD
+
+    Encrypt --> DB
 ```
 
-| Path | Purpose |
-|---|---|
-| `cmd/server/` | Entry point — HTTP server + background goroutines |
-| `internal/api/` | HTTP handlers — one file per domain (~40 files) |
-| `internal/core/` | Business logic — bots, alerting, DKIM, FBL, DSN, VERP, ISP intel, anomaly detection, adaptive throttle, campaigns, config gen |
-| `internal/models/` | GORM model definitions (25+ tables) |
-| `internal/store/` | Database layer — queries and CRUD |
-| `internal/middleware/` | Auth, rate limiting, CORS |
-| `web/src/` | React frontend (Vite 5, Tailwind CSS 3) |
+### Component Summary
+
+| Path | Files | Purpose |
+|---|---|---|
+| `cmd/server/` | 1 | Entry point — HTTP server, scheduler, background goroutines |
+| `internal/api/` | 48 | HTTP handlers — one file per domain (auth, domains, DKIM, campaigns, AI, FBL, queue, config, cluster, etc.) |
+| `internal/core/` | 34 | Business logic — bots, alerting, DKIM, DMARC, FBL, DSN, VERP, ISP intel, anomaly detection, adaptive throttle, campaigns, warmup, config gen, reputation, security |
+| `internal/models/` | 1 | GORM model definitions (25+ tables, auto-migrated on startup) |
+| `internal/store/` | 4 | Database layer — SQLite CRUD, FBL store, ISP intel store, campaign store |
+| `internal/middleware/` | 3 | Auth middleware, rate limiting (auth + general), CORS |
+| `web/src/pages/` | 37 | React pages — Dashboard, Stats, Domains, DKIM, DMARC, EmailAuth, Campaigns, AI Advisor, FBL, ISP Intel, Anomaly, Reputation, Queue, Config, Settings, etc. |
+| `web/src/` | 5 | App router, API client, auth context, layout, utilities |
+| `scripts/` | 1 | One-command Rocky Linux 9 installer |
+
+### Data Flow
+
+```
+User Action → React SPA → REST API (JWT auth) → Handler → Core Logic → SQLite DB
+                                                    ↓
+                                              KumoMTA HTTP API (:8000)
+                                                    ↓
+                                              Email Delivery → ISP
+                                                    ↓
+                                              Logs (zstd JSON) → Delivery Events → Stats
+                                                    ↓
+                                              Bounce/FBL → Inbound Processor → Auto-Suppress
+                                                    ↓
+                                              ISP Intel + Anomaly Detector → Adaptive Throttle
+                                                    ↓
+                                              Alerts → Telegram / Discord / Email / Webhook
+```
 
 ---
 
