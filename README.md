@@ -332,9 +332,10 @@ Generate an API key with `send` scope from Settings → API Keys.
 ## Architecture
 
 ```mermaid
-flowchart TB
+flowchart LR
     %% ── User Access Layer ──
     subgraph Users ["User Access"]
+        direction TB
         Browser["Browser<br/>Dashboard / Settings / Pages"]
         TGUser["Telegram<br/>User / Group"]
         DCUser["Discord<br/>Server"]
@@ -409,8 +410,10 @@ flowchart TB
 
     %% ── External Services ──
     subgraph External ["External Services"]
+        direction TB
         MTA["KumoMTA<br/>Rust MTA on :8000<br/>Queue, Delivery, Metrics,<br/>Logs (zstd JSON)"]
         subgraph AIProviders ["AI Providers (8)"]
+            direction TB
             OpenAI["OpenAI<br/>GPT-4o-mini"]
             Claude["Anthropic<br/>Claude 3.5"]
             Gemini["Google<br/>Gemini 2.0"]
@@ -427,6 +430,7 @@ flowchart TB
     end
 
     subgraph OS ["Host OS"]
+        direction TB
         SystemD["systemd<br/>Service management"]
         Fail2Ban["Fail2Ban<br/>IP banning"]
         Maildir["Maildir<br/>/home/*/Maildir"]
