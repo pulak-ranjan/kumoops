@@ -124,21 +124,21 @@ export default function APIKeysPage() {
             color: "text-blue-500",
             title: "HTTP Sending API",
             body: "Use any key with the `send` scope to call POST /api/v1/messages — Mailgun-compatible. Set Authorization header to your key.",
-            code: 'curl -X POST https://your-server/api/v1/messages \\\n  -H "Authorization: kumo_xxxxx" \\\n  -d \'{"to":"user@example.com","subject":"Hi","html":"<p>Hello</p>","from_email":"sender@yourdomain.com"}\'',
+            code: `curl -X POST ${window.location.origin}/api/v1/messages \\\n  -H "Authorization: kumo_xxxxx" \\\n  -d '{"to":"user@example.com","subject":"Hi","html":"<p>Hello</p>","from_email":"sender@yourdomain.com"}'`,
           },
           {
             icon: Server,
             color: "text-orange-500",
             title: "Multi-VPS Cluster",
             body: "To add a remote KumoOps node: generate a key with the `cluster` scope on the remote server, then paste it as the API Token in Remote Servers.",
-            code: "1. On VPS-2 → API Keys → Create Key (cluster scope)\n2. Copy the kumo_xxx key\n3. On VPS-1 → Remote Servers → Add Server\n   URL: https://vps2.yourdomain.com\n   API Token: kumo_xxx (paste here)",
+            code: `1. On VPS-2 → API Keys → Create Key (cluster scope)\n2. Copy the kumo_xxx key\n3. On VPS-1 → Remote Servers → Add Server\n   URL: ${window.location.origin}\n   API Token: kumo_xxx (paste here)`,
           },
           {
             icon: Globe,
             color: "text-green-500",
             title: "External Integrations",
             body: "Give external tools like MailWizz, Mautic, or your own app a scoped key. Use read-only keys for monitoring dashboards.",
-            code: "# Example: Python app sending via KumoOps\nimport requests\nrequests.post('https://your-server/api/v1/messages',\n  headers={'Authorization': 'kumo_xxx'},\n  json={'to': 'user@example.com', ...})",
+            code: `# Example: Python app sending via KumoOps\nimport requests\nrequests.post('${window.location.origin}/api/v1/messages',\n  headers={'Authorization': 'kumo_xxx'},\n  json={'to': 'user@example.com', ...})`,
           },
         ].map((item) => {
           const Icon = item.icon;

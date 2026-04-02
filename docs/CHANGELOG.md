@@ -8,9 +8,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [0.2.1] - 2026-04-01
 
-> Planned improvements and upcoming features will be listed here before each release.
+### Bug Fixes & Improvements
+
+#### Authentication & Security
+- **Fixed 401 handling across all frontend pages** — every page now properly redirects to `/login` on expired sessions instead of showing raw errors
+- **Added missing auth headers** to ISPIntelPage and AnomalyPage (were making unauthenticated API calls)
+- **Fixed race conditions** in tracking.go — `camp.TotalOpens++` replaced with atomic `gorm.Expr("total_opens + 1")`
+- **Fixed nil slice JSON serialization** — `var x []T` returns `[]` instead of `null` across 24 instances
+
+#### Settings & Integrations
+- **CRITICAL: Fixed settings persistence** — `settingsDTO` was missing Telegram, Discord, Ollama, and ServerLabel fields, causing all integration settings to silently fail to save
+- **Fixed Telegram bot polling** — added `deleteWebhook()` call before polling (webhook presence blocks `getUpdates`), added comprehensive error logging
+- **Added panic recovery** to Telegram bot goroutine — crashes restart automatically after 10s
+
+#### Reputation & Blacklist
+- **Removed dead RBLs** — SORBS (shut down June 2024), NiX Spam (shut down January 2025)
+- **Fixed Spamhaus false positives** — `isRealListing()` now rejects `127.255.255.254` (public DNS error response)
+- **Added delist URLs** — backend endpoint `/api/reputation/delist-urls` + frontend delist link column for all 10 active RBLs (Spamhaus, Barracuda, SpamCop, UCEPROTECT, SURBL, etc.)
+
+#### AI Layer
+- **Unified all AI calls to `sendToAI()`** — removed dead `callAIAPI` and `callClaudeAPI` functions (~100 lines)
+- **All 7 cloud providers + Ollama** now work across all AI endpoints (advisor, content analyzer, subject generator)
+
+#### Delivery Logs
+- **Enriched delivery log entries** — now includes Queue, Site, NumAttempts, EgressPool, EgressSource, BounceClassification
+- **Added Expiration and OOB event types** to delivery log parsing and frontend badges
+
+#### Infrastructure
+- **Added Dockerfile** — multi-stage build (Node + Go + Alpine runtime)
+- **Added docker-compose.yml** — one-command `docker compose up -d`
+- **Added .dockerignore** for clean builds
+- **Rewrote README.md** — comprehensive documentation with use cases, comparison table, rules, funding, contact info
 
 ---
 
@@ -162,7 +192,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Initial Release
 
-This is the first versioned release of KumoMTA UI — a full-featured control panel for KumoMTA built with React and Go.
+This is the first versioned release of KumoOps — a full-featured control panel for KumoMTA built with React and Go.
 
 #### Authentication & Security
 - Admin registration with bcrypt password hashing
@@ -220,10 +250,10 @@ This is the first versioned release of KumoMTA UI — a full-featured control pa
 - OpenAPI / Swagger spec for all endpoints
 - Multi-user roles (read-only, operator, admin)
 - Slack bot integration
-- Docker / docker-compose setup
+- Prometheus metrics endpoint (`/metrics`)
 
 ### [1.0.0] — Planned
 - Stable API with guaranteed backwards compatibility
 - Full test suite with CI/CD pipeline
-- Official Docker image
-- Prometheus metrics endpoint (`/metrics`)
+- AI agent mode — natural language MTA commands with auto-execution
+- Grafana dashboard templates

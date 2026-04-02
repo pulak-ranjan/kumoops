@@ -1,12 +1,12 @@
 # DNS Setup Guide
 
-Complete DNS configuration required for KumoMTA UI to achieve maximum deliverability.
+Complete DNS configuration required for KumoOps to achieve maximum deliverability.
 
 ---
 
 ## Overview
 
-KumoMTA UI uses **envelope-from separation** to isolate bounce handling per sender identity. This means each sender (e.g., `a1@domain.com`) gets its own subdomain (`a1.domain.com`) for the envelope return path. You must configure DNS records for **both** the main domain and each sender subdomain.
+KumoOps uses **envelope-from separation** to isolate bounce handling per sender identity. This means each sender (e.g., `a1@domain.com`) gets its own subdomain (`a1.domain.com`) for the envelope return path. You must configure DNS records for **both** the main domain and each sender subdomain.
 
 ### How It Works
 
@@ -24,7 +24,7 @@ Before configuring DNS, you need:
 - Your **MTA server IP address** (e.g., `198.51.100.10`)
 - Your **MTA hostname** (e.g., `mta.domain.com`)
 - Access to your domain's DNS management panel
-- Senders already created in the KumoMTA UI panel
+- Senders already created in the KumoOps panel
 
 ---
 
@@ -95,7 +95,7 @@ a1._domainkey.domain.com.  IN  TXT  "v=DKIM1; k=rsa; p=MIIBIjAN..."
 
 ## Step 3: Sender Subdomain Records (Critical)
 
-**This is the most commonly missed step.** Because KumoMTA UI uses envelope-from separation, each sender needs its own subdomain DNS records.
+**This is the most commonly missed step.** Because KumoOps uses envelope-from separation, each sender needs its own subdomain DNS records.
 
 For sender `a1@domain.com`, the subdomain is `a1.domain.com`:
 

@@ -350,7 +350,20 @@ func (s *Server) handleCreateRequiredInboxes(w http.ResponseWriter, r *http.Requ
 			results = append(results, result{Username: username, Domain: d.Name, Status: "created"})
 		}
 	}
-	writeJSON(w, http.StatusOK, map[string]interface{}{"results": results})
+
+	// Auto-apply KumoMTA config so listener_domains.toml includes all domains
+	// This prevents 550 errors when sending to abuse@domain, postmaster@domain, etc.
+	configApplied := false
+	if snap, err := core.LoadSnapshot(s.Store); err == nil {
+		if _, applyErr := core.ApplyKumoConfig(snap); applyErr == nil {
+			configApplied = true
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"results":        results,
+		"config_applied": configApplied,
+	})
 }
 
 // parseMailHeaders reads From, Subject, Date from first 60 lines of a .eml file.

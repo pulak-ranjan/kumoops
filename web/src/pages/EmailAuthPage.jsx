@@ -410,11 +410,12 @@ function TlsRptSection({ domain }) {
   );
 }
 
-// --- Auth Checklist ---
+// --- Auth Checklist with Deep Validation ---
 function AuthChecklist({ domain }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [expandedSection, setExpandedSection] = useState(null);
 
   const load = useCallback(async () => {
     if (!domain) return;
@@ -434,18 +435,25 @@ function AuthChecklist({ domain }) {
 
   if (!domain) return null;
 
+  const toggle = (section) => setExpandedSection(prev => prev === section ? null : section);
+
   return (
-    <div className="bg-card border rounded-xl shadow-sm p-5">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-card border rounded-xl shadow-sm p-5 space-y-4">
+      <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold flex items-center gap-2">
           <ShieldCheck className="w-5 h-5 text-primary" /> Auth Checklist
         </h2>
-        <button onClick={load} disabled={loading} className="p-1.5 hover:bg-muted rounded-md transition-colors" title="Refresh">
-          <RefreshCw className={cn("w-4 h-4 text-muted-foreground", loading && "animate-spin")} />
-        </button>
+        <div className="flex items-center gap-2">
+          {data?.server_ip && (
+            <span className="text-xs bg-muted px-2 py-1 rounded font-mono">Server IP: {data.server_ip}</span>
+          )}
+          <button onClick={load} disabled={loading} className="p-1.5 hover:bg-muted rounded-md transition-colors" title="Refresh">
+            <RefreshCw className={cn("w-4 h-4 text-muted-foreground", loading && "animate-spin")} />
+          </button>
+        </div>
       </div>
 
-      {error && <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm mb-3">{error}</div>}
+      {error && <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm">{error}</div>}
 
       {loading && !data && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -459,32 +467,176 @@ function AuthChecklist({ domain }) {
       )}
 
       {data && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {(data.checklist || []).map(item => (
-            <div
-              key={item.name}
-              className={cn(
-                "flex items-start gap-2 p-3 rounded-lg border transition-colors",
-                item.configured
-                  ? "bg-green-500/10 border-green-500/20"
-                  : "bg-muted/30 border-border"
-              )}
-              title={item.description}
-            >
-              {item.configured
-                ? <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
-                : <XCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />}
-              <div>
-                <span className={cn("text-sm font-semibold", item.configured ? "text-green-700 dark:text-green-300" : "text-muted-foreground")}>
-                  {item.name}
-                </span>
-                {item.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{item.description}</p>
-                )}
+        <>
+          {/* Checklist Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {(data.checklist || []).map(item => {
+              const hasDetails = (item.name === 'SPF' && data.spf_details?.length > 0) ||
+                                 (item.name === 'DKIM' && data.dkim_details?.length > 0) ||
+                                 (item.name === 'DMARC' && data.dmarc_details?.policy);
+              return (
+                <button
+                  key={item.name}
+                  onClick={() => hasDetails && toggle(item.name)}
+                  className={cn(
+                    "flex items-start gap-2 p-3 rounded-lg border transition-colors text-left",
+                    item.configured ? "bg-green-500/10 border-green-500/20" : "bg-muted/30 border-border",
+                    hasDetails && "cursor-pointer hover:ring-1 hover:ring-primary/30",
+                    expandedSection === item.name && "ring-2 ring-primary/50"
+                  )}
+                >
+                  {item.configured
+                    ? <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                    : <XCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <span className={cn("text-sm font-semibold", item.configured ? "text-green-700 dark:text-green-300" : "text-muted-foreground")}>
+                      {item.name}
+                    </span>
+                    {hasDetails && <span className="text-[10px] text-primary ml-1">(details)</span>}
+                    {item.description && (
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-snug truncate">{item.description}</p>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* MX Records */}
+          {data.mx_records?.length > 0 && (
+            <div className="border rounded-lg p-3">
+              <p className="text-xs font-semibold text-muted-foreground mb-2">MX Records</p>
+              <div className="space-y-1">
+                {data.mx_records.map((mx, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs font-mono">
+                    <span className="text-muted-foreground w-6 text-right">{mx.priority}</span>
+                    <span className="font-medium">{mx.host}</span>
+                    <span className="text-muted-foreground">→ {(mx.ips || []).join(', ') || 'no A record'}</span>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          )}
+
+          {/* SPF Deep Details */}
+          {expandedSection === 'SPF' && data.spf_details?.length > 0 && (
+            <div className="border rounded-lg p-4 space-y-2 bg-muted/20">
+              <p className="text-sm font-semibold">SPF Record Breakdown</p>
+              {data.spf_record && (
+                <pre className="text-xs font-mono bg-zinc-950 text-zinc-300 p-3 rounded-lg break-all whitespace-pre-wrap">{data.spf_record}</pre>
+              )}
+              <div className="space-y-1.5">
+                {data.spf_details.map((d, i) => (
+                  <div key={i} className={cn(
+                    "flex items-start gap-2 p-2 rounded-md text-xs border",
+                    d.match ? "bg-green-500/10 border-green-500/20" : "bg-background border-border"
+                  )}>
+                    <span className={cn("font-mono font-bold w-5 text-center shrink-0",
+                      d.qualifier === '+' ? 'text-green-600' : d.qualifier === '-' ? 'text-red-600' : d.qualifier === '~' ? 'text-yellow-600' : 'text-muted-foreground'
+                    )}>{d.qualifier}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-mono font-medium">{d.mechanism}</span>
+                      <p className="text-muted-foreground mt-0.5">{d.explanation}</p>
+                      {d.resolved_ips?.length > 0 && (
+                        <p className="text-muted-foreground mt-0.5">
+                          Resolved: {d.resolved_ips.map((ip, j) => (
+                            <span key={j} className={cn("font-mono", ip === data.server_ip ? "text-green-600 font-bold" : "")}>
+                              {j > 0 ? ', ' : ''}{ip}{ip === data.server_ip ? ' (your server)' : ''}
+                            </span>
+                          ))}
+                        </p>
+                      )}
+                    </div>
+                    {d.match && (
+                      <span className="bg-green-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0">MATCH</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* DKIM Deep Details */}
+          {expandedSection === 'DKIM' && data.dkim_details?.length > 0 && (
+            <div className="border rounded-lg p-4 space-y-2 bg-muted/20">
+              <p className="text-sm font-semibold">DKIM Selectors Found</p>
+              <div className="space-y-2">
+                {data.dkim_details.map((d, i) => (
+                  <div key={i} className={cn(
+                    "p-3 rounded-md border text-xs",
+                    d.status === 'valid' ? "bg-green-500/10 border-green-500/20" : "bg-yellow-500/10 border-yellow-500/20"
+                  )}>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="font-mono font-bold">{d.selector}._domainkey.{domain}</span>
+                      <span className={cn(
+                        "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                        d.status === 'valid' ? "bg-green-600 text-white" : "bg-yellow-600 text-white"
+                      )}>{d.type}</span>
+                      {d.key_bits > 0 && (
+                        <span className={cn(
+                          "text-[10px] px-1.5 py-0.5 rounded font-bold",
+                          d.key_bits >= 2048 ? "bg-green-600 text-white" : "bg-yellow-600 text-white"
+                        )}>{d.key_bits}-bit</span>
+                      )}
+                    </div>
+                    {d.target && <p className="text-muted-foreground font-mono">→ {d.target}</p>}
+                    {d.warning && <p className="text-yellow-600 mt-1 font-medium">{d.warning}</p>}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* DMARC Deep Details */}
+          {expandedSection === 'DMARC' && data.dmarc_details?.policy && (
+            <div className="border rounded-lg p-4 space-y-2 bg-muted/20">
+              <p className="text-sm font-semibold">DMARC Policy Details</p>
+              {data.dmarc_details.raw && (
+                <pre className="text-xs font-mono bg-zinc-950 text-zinc-300 p-3 rounded-lg break-all whitespace-pre-wrap">{data.dmarc_details.raw}</pre>
+              )}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="p-2 rounded border bg-background">
+                  <span className="text-muted-foreground">Policy:</span>{' '}
+                  <span className={cn("font-bold",
+                    data.dmarc_details.policy === 'reject' ? 'text-green-600' :
+                    data.dmarc_details.policy === 'quarantine' ? 'text-yellow-600' : 'text-red-600'
+                  )}>{data.dmarc_details.policy}</span>
+                  {data.dmarc_details.policy_label && <span className="text-muted-foreground ml-1">({data.dmarc_details.policy_label})</span>}
+                </div>
+                {data.dmarc_details.subdomain_policy && (
+                  <div className="p-2 rounded border bg-background">
+                    <span className="text-muted-foreground">Subdomain:</span> <span className="font-bold">{data.dmarc_details.subdomain_policy}</span>
+                  </div>
+                )}
+                {data.dmarc_details.aggregate_reports && (
+                  <div className="p-2 rounded border bg-background col-span-2">
+                    <span className="text-muted-foreground">Reports to:</span> <span className="font-mono">{data.dmarc_details.aggregate_reports}</span>
+                  </div>
+                )}
+                {data.dmarc_details.dkim_alignment && (
+                  <div className="p-2 rounded border bg-background">
+                    <span className="text-muted-foreground">DKIM Alignment:</span> <span className="font-bold">{data.dmarc_details.dkim_alignment}</span>
+                  </div>
+                )}
+                {data.dmarc_details.spf_alignment && (
+                  <div className="p-2 rounded border bg-background">
+                    <span className="text-muted-foreground">SPF Alignment:</span> <span className="font-bold">{data.dmarc_details.spf_alignment}</span>
+                  </div>
+                )}
+                {data.dmarc_details.percentage && (
+                  <div className="p-2 rounded border bg-background">
+                    <span className="text-muted-foreground">Percentage:</span> <span className="font-bold">{data.dmarc_details.percentage}%</span>
+                  </div>
+                )}
+              </div>
+              {data.dmarc_details.policy === 'none' && (
+                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-2 text-xs text-yellow-700 dark:text-yellow-400 font-medium">
+                  Policy is set to "none" — failures are only monitored, not enforced. Consider upgrading to "quarantine" or "reject" for production.
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,6 +1,6 @@
-# Contributing to KumoMTA UI
+# Contributing to KumoOps
 
-Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to KumoMTA UI.
+Thank you for your interest in contributing! This document provides guidelines and instructions for contributing to KumoOps.
 
 ## Getting Started
 

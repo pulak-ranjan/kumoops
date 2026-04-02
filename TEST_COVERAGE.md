@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document outlines the comprehensive test coverage added for the KumoMTA UI project based on the git diff between the current branch and main.
+This document outlines the comprehensive test coverage added for the KumoOps project based on the git diff between the current branch and main.
 
 ## Files Tested
 
